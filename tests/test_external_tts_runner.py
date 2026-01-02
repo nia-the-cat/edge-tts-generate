@@ -1,0 +1,322 @@
+"""
+Tests for external_tts_runner.py - CLI argument parsing and synthesize function.
+Note: These tests mock edge_tts to avoid network calls.
+"""
+
+import argparse
+import importlib.util
+import os
+import sys
+import tempfile
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+# Import external_tts_runner from the parent directory without adding it to sys.path
+_module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "external_tts_runner.py")
+
+
+class TestArgumentParsing:
+    """Test CLI argument parsing."""
+
+    def test_parser_requires_text_file(self):
+        """Parser should require --text-file argument."""
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--text-file", required=True)
+        parser.add_argument("--voice", required=True)
+        parser.add_argument("--pitch", required=True)
+        parser.add_argument("--rate", required=True)
+        parser.add_argument("--volume", required=True)
+
+        with pytest.raises(SystemExit):
+            parser.parse_args([])
+
+    def test_parser_accepts_all_arguments(self):
+        """Parser should accept all required arguments."""
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--text-file", required=True)
+        parser.add_argument("--voice", required=True)
+        parser.add_argument("--pitch", required=True)
+        parser.add_argument("--rate", required=True)
+        parser.add_argument("--volume", required=True)
+
+        args = parser.parse_args([
+            "--text-file", "/tmp/test.txt",
+            "--voice", "ja-JP-NanamiNeural",
+            "--pitch", "+0Hz",
+            "--rate", "+0%",
+            "--volume", "+0%",
+        ])
+
+        assert args.text_file == "/tmp/test.txt"
+        assert args.voice == "ja-JP-NanamiNeural"
+        assert args.pitch == "+0Hz"
+        assert args.rate == "+0%"
+        assert args.volume == "+0%"
+
+
+def _load_external_tts_runner():
+    """Load external_tts_runner module with mocked edge_tts."""
+    sys.modules["edge_tts"] = MagicMock()
+    spec = importlib.util.spec_from_file_location("external_tts_runner", _module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestSynthesizeFunction:
+    """Test the synthesize async function."""
+
+    @pytest.mark.asyncio
+    async def test_synthesize_reads_text_file(self):
+        """Synthesize should read text from the provided file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Hello, world!")
+            text_file = f.name
+
+        try:
+            # Create mock args
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            # Mock edge_tts.Communicate
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"audio_data_chunk_1"}
+                yield {"type": "audio", "data": b"audio_data_chunk_2"}
+                yield {"type": "metadata", "data": "some_metadata"}  # Should be skipped
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts):
+                result = await external_tts_runner.synthesize(args)
+
+            assert result == b"audio_data_chunk_1audio_data_chunk_2"
+        finally:
+            os.unlink(text_file)
+
+    @pytest.mark.asyncio
+    async def test_synthesize_passes_voice_parameters(self):
+        """Synthesize should pass all voice parameters to edge_tts."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Test text")
+            text_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="ja-JP-NanamiNeural",
+                pitch="+10Hz",
+                rate="-5%",
+                volume="+20%",
+            )
+
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"data"}
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
+                await external_tts_runner.synthesize(args)
+
+                mock_communicate.assert_called_once_with(
+                    "Test text",
+                    voice="ja-JP-NanamiNeural",
+                    pitch="+10Hz",
+                    rate="-5%",
+                    volume="+20%",
+                )
+        finally:
+            os.unlink(text_file)
+
+    @pytest.mark.asyncio
+    async def test_synthesize_handles_empty_file(self):
+        """Synthesize should handle empty text file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("")
+            text_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                # Empty audio for empty text
+                return
+                yield  # Make it a generator
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts):
+                result = await external_tts_runner.synthesize(args)
+
+            assert result == b""
+        finally:
+            os.unlink(text_file)
+
+    @pytest.mark.asyncio
+    async def test_synthesize_handles_unicode_text(self):
+        """Synthesize should handle Unicode text properly."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("こんにちは、世界！")
+            text_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="ja-JP-NanamiNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"japanese_audio"}
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
+                result = await external_tts_runner.synthesize(args)
+
+                # Verify the text was read correctly
+                mock_communicate.assert_called_once()
+                call_args = mock_communicate.call_args[0]
+                assert call_args[0] == "こんにちは、世界！"
+
+            assert result == b"japanese_audio"
+        finally:
+            os.unlink(text_file)
+
+
+class TestMainFunction:
+    """Test the main entry point function."""
+
+    def test_main_returns_zero_on_success(self):
+        """Main should return 0 on successful execution."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Test")
+            text_file = f.name
+
+        try:
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"data"}
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            test_args = [
+                "external_tts_runner.py",
+                "--text-file", text_file,
+                "--voice", "en-US-JennyNeural",
+                "--pitch", "+0Hz",
+                "--rate", "+0%",
+                "--volume", "+0%",
+            ]
+
+            with patch("sys.argv", test_args):
+                with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts):
+                    with patch("sys.stdout") as mock_stdout:
+                        mock_stdout.buffer = MagicMock()
+                        result = external_tts_runner.main()
+
+            assert result == 0
+        finally:
+            os.unlink(text_file)
+
+
+class TestVoiceParameters:
+    """Test handling of various voice parameter formats."""
+
+    @pytest.mark.asyncio
+    async def test_negative_pitch(self):
+        """Should handle negative pitch values."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Test")
+            text_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="en-US-JennyNeural",
+                pitch="-20Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"data"}
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
+                await external_tts_runner.synthesize(args)
+
+                call_kwargs = mock_communicate.call_args[1]
+                assert call_kwargs["pitch"] == "-20Hz"
+        finally:
+            os.unlink(text_file)
+
+    @pytest.mark.asyncio
+    async def test_extreme_rate(self):
+        """Should handle extreme rate values."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+            f.write("Test")
+            text_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                text_file=text_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="-50%",
+                volume="+0%",
+            )
+
+            mock_tts = MagicMock()
+
+            async def mock_stream():
+                yield {"type": "audio", "data": b"data"}
+
+            mock_tts.stream = mock_stream
+
+            external_tts_runner = _load_external_tts_runner()
+
+            with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
+                await external_tts_runner.synthesize(args)
+
+                call_kwargs = mock_communicate.call_args[1]
+                assert call_kwargs["rate"] == "-50%"
+        finally:
+            os.unlink(text_file)
