@@ -1,10 +1,10 @@
 # EdgeTTS Audio Generator for Anki
 
-Generate high quality Japanese audio for your Anki cards using the edge-tts speech synthesis software
+Generate high quality text-to-speech audio for your Anki cards using the edge-tts speech synthesis software. Supports multiple languages and voices.
 
 # What does this do?
 
-This is a text to speech addon for Anki that makes use of the edge-tts synthesis engine to generate audio for Japanese Anki cards.
+This is a text to speech addon for Anki that makes use of the edge-tts synthesis engine to generate audio for your Anki cards. It supports a wide variety of languages and voices, making it suitable for any language learning or study purpose.
 
 # Installation
 
@@ -24,9 +24,15 @@ The add-on now bootstraps its own isolated Python 3.14 runtime when it first gen
     * You can select multiple cards to generate audio for many cards at once (batch processing). Note that if you select two different types of cards only the fields that they have in common will appear in the source/destination dropdown.
 
 2. Select the source and destination fields for generating audio
-    * Source refers to which field the addon should read from to generate audio. For example you usually want to read from the `Sentence` field or similar.
-    * Destination refers to the field that the addon should output the audio to. Fields like `SentenceAudio`. Whatever field you want the audio to be placed in. NOTE: This will overwrite the contents of this field, so don't select any field you don't want overwritten with audio
+    * **Source field**: The field to read text from for generating audio (e.g., `Sentence`, `Expression`, `Word`)
+    * **Destination field**: The field where the generated audio will be placed (e.g., `Audio`, `SentenceAudio`)
+    * If you don't have an audio field, select `[ + Create new field... ]` from the destination dropdown to create one
 
-3. Select a speaker from the dropdown. You can preview the voices by selecting "Preview Voice"
+3. Choose how to handle existing content in the destination field:
+    * **Append (default)**: Keeps existing content and adds the new audio at the end. This is the safest option to avoid accidentally erasing information.
+    * **Overwrite**: Replaces the entire content of the destination field with the new audio
+    * **Skip**: Skips notes that already have content in the destination field
 
-4. Click "Generate Audio" and wait for the audio to be generated
+4. Select a speaker from the dropdown. You can preview the voices by selecting "Preview Voice"
+
+5. Click "Generate Audio" and wait for the audio to be generated
