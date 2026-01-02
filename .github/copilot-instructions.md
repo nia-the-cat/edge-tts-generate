@@ -280,7 +280,8 @@ The add-on processes text in this order:
 The project uses GitHub Actions for CI. See `.github/workflows/`:
 
 - **tests.yml**: Runs tests on Python 3.14 across Linux, macOS, and Windows
-- **build.yml**: Builds the `.ankiaddon` package
+- **build.yml**: Builds the `.ankiaddon` package and creates releases for git tags
+- **release.yml**: Manual release workflow for repository owner to create releases (workflow_dispatch)
 
 All PRs must pass:
 - Unit tests on Python 3.14
@@ -291,11 +292,22 @@ All PRs must pass:
 
 ### Release Process
 
-1. Update version numbers if needed (in relevant files)
-2. Ensure all tests pass locally and in CI
-3. Create a git tag: `git tag v1.x.x`
-4. Push tag: `git push origin v1.x.x`
-5. GitHub Actions automatically builds and creates a release with the `.ankiaddon` file
+**NOTE: Releases are handled by the repository owner via the Manual Release workflow. Do NOT create releases, tags, or modify the release process as an AI assistant.**
+
+The project uses a manual GitHub Actions workflow for creating releases:
+
+1. **Human-Managed Process**: The repository owner triggers releases via GitHub Actions UI
+2. **Workflow**: `.github/workflows/release.yml` (Manual Release workflow)
+3. **How it works**:
+   - Navigate to Actions tab → Manual Release workflow
+   - Click "Run workflow" and enter version number (e.g., "1.0.0" or "v1.0.0")
+   - Workflow automatically creates git tag, builds `.ankiaddon` package, and publishes release
+4. **AI Role**: You should NEVER attempt to create releases, push tags, or modify the release workflow
+5. **If asked about releases**: Direct the user to use the Manual Release workflow in GitHub Actions
+
+**Automatic Tag-Based Releases** (legacy, still functional):
+- Pushing a tag matching `v*` pattern will also trigger a release via `build.yml`
+- This is maintained for backward compatibility but the Manual Release workflow is preferred
 
 ## Architecture & Design Patterns
 
