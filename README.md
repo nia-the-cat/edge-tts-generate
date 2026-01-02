@@ -8,45 +8,15 @@ This is a text to speech addon for Anki that makes use of the edge-tts synthesis
 
 # Setup
 
-1. You need to have a venv with edge-tts
+The add-on now bootstraps its own isolated Python 3.14 runtime when it first generates audio. No manual virtual environment creation or `pip install` steps are required. On first use the add-on will download the official embeddable Python package, install `edge-tts` inside it, and reuse that runtime for future sessions.
 
-Windows
-
-```
-cd %HOMEPATH%\AppData\Roaming\Anki2\addons21
-py -3.9 -m pip install --upgrade pip virtualenv
-py -3.9 -m venv edge-tts
-edge-tts\Scripts\activate
-py -m pip install --upgrade edge-tts
-```
-
-macOS
-
-```
-cd ~/Library/Application\ Support/Anki2/addons21
-python3.9 -m pip install --upgrade pip virtualenv
-python3.9 -m venv edge-tts
-. edge-tts/bin/activate
-python -m pip install --upgrade edge-tts
-```
-
-Linux
-
-```
-cd ~/.local/share/Anki2/addons21/
-python3.9 -m pip install --upgrade pip virtualenv
-python3.9 -m venv edge-tts
-source edge-tts/bin/activate
-python -m pip install --upgrade edge-tts
-```
-
-2. Open the Anki card browser and right click on any card and select "Generate edge-tts Audio" from the dropdown
+1. Open the Anki card browser and right click on any card and select "Generate edge-tts Audio" from the dropdown
     * You can drag and select multiple cards to generate audio for many cards at once. Note that if you select two different types of cards only the fields that they have in common will appear in the source/destination dropdown.
 
-3. Select the source and destination fields for generating audio
+2. Select the source and destination fields for generating audio
     * Source refers to which field the addon should read from to generate audio. For example you usually want to read from the `Sentence` field or similar.
     * Destination refers to the field that the addon should output the audio to. Fields like `SentenceAudio`. Whatever field you want the audio to be placed in. NOTE: This will overwrite the contents of this field, so don't select any field you don't want overwritten with audio
 
-4. Select a speaker from the dropdown. You can preview the voices by selecting "Preview Voice"
+3. Select a speaker from the dropdown. You can preview the voices by selecting "Preview Voice"
 
-5. Click "Generate Audio" and wait for the audio to be generated
+4. Click "Generate Audio" and wait for the audio to be generated
