@@ -274,6 +274,63 @@ class TestSynthesizeFunction:
         finally:
             os.unlink(batch_file)
 
+    def test_synthesize_batch_uses_bounded_concurrency(self):
+        """Synthesize batch should not exceed the configured concurrency limit."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(
+                {
+                    "items": [
+                        {"id": "3", "text": "third"},
+                        {"id": "1", "text": "first"},
+                        {"id": "2", "text": "second"},
+                        {"id": "5", "text": "fifth"},
+                        {"id": "4", "text": "fourth"},
+                    ]
+                },
+                f,
+            )
+            batch_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                batch_file=batch_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            external_tts_runner = _load_external_tts_runner()
+            external_tts_runner.BATCH_CONCURRENCY_LIMIT = 2
+
+            running = 0
+            max_running = 0
+
+            async def fake_synthesize_text(text, _args):
+                nonlocal running, max_running
+                running += 1
+                max_running = max(max_running, running)
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                running -= 1
+                return f"audio-{text}".encode()
+
+            with patch.object(external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text):
+                result = asyncio.run(external_tts_runner.synthesize_batch(args))
+
+            assert max_running <= external_tts_runner.BATCH_CONCURRENCY_LIMIT
+
+            expected = [
+                {"id": "1", "audio": base64.b64encode(b"audio-first").decode("ascii")},
+                {"id": "2", "audio": base64.b64encode(b"audio-second").decode("ascii")},
+                {"id": "3", "audio": base64.b64encode(b"audio-third").decode("ascii")},
+                {"id": "4", "audio": base64.b64encode(b"audio-fourth").decode("ascii")},
+                {"id": "5", "audio": base64.b64encode(b"audio-fifth").decode("ascii")},
+            ]
+            assert result == expected
+        finally:
+            os.unlink(batch_file)
+
 
 class TestMainFunction:
     """Test the main entry point function."""

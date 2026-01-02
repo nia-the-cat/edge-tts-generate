@@ -6,6 +6,8 @@ import sys
 
 import edge_tts
 
+BATCH_CONCURRENCY_LIMIT = 5
+
 
 async def synthesize_text(text: str, args: argparse.Namespace) -> bytes:
     tts = edge_tts.Communicate(
@@ -37,10 +39,16 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
     identifiers: list[str] = []
     tasks: list[asyncio.Task[bytes]] = []
 
+    semaphore = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
+
+    async def synthesize_with_limit(text: str) -> bytes:
+        async with semaphore:
+            return await synthesize_text(text, args)
+
     for item in items:
         text = item.get("text", "")
         identifiers.append(str(item.get("id", "")))
-        tasks.append(asyncio.create_task(synthesize_text(text, args)))
+        tasks.append(asyncio.create_task(synthesize_with_limit(text)))
 
     audio_results = await asyncio.gather(*tasks, return_exceptions=True)
 
