@@ -603,6 +603,16 @@ def addFieldToNoteTypes(field_name, selected_notes):
 
 
 def onEdgeTTSOptionSelected(browser):
+    selected_notes = browser.selectedNotes()
+
+    if len(selected_notes) == 0:
+        QMessageBox.information(
+            mw,
+            "No notes selected",
+            "Please select one or more notes before generating audio.",
+        )
+        return
+
     dialog = MyDialog(browser)
     if dialog.exec():
         speaker = getSpeaker(dialog.speaker_combo)
