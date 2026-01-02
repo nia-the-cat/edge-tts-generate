@@ -19,6 +19,7 @@ class TestGetSpeakerListLogic:
 
     def test_returns_speakers_from_config(self):
         """Should return speakers list from config."""
+
         # This is the logic from getSpeakerList
         def getSpeakerList(config):
             speakers = []
@@ -39,6 +40,7 @@ class TestGetSpeakerListLogic:
 
     def test_returns_empty_list_when_no_speakers(self):
         """Should return empty list when config has no speakers."""
+
         def getSpeakerList(config):
             speakers = []
             speakers.extend(config.get("speakers", []))
@@ -52,6 +54,7 @@ class TestGetSpeakerListLogic:
 
     def test_handles_none_speakers(self):
         """Should handle None speakers gracefully."""
+
         def getSpeakerList(config):
             speakers = []
             speakers.extend(config.get("speakers", []) or [])
@@ -68,6 +71,7 @@ class TestGetSpeakerLogic:
 
     def test_returns_selected_speaker(self):
         """Should return the currently selected speaker name."""
+
         # This is the logic from getSpeaker
         def getSpeaker(speaker_combo):
             speaker_name = speaker_combo.itemText(speaker_combo.currentIndex())
@@ -83,6 +87,7 @@ class TestGetSpeakerLogic:
 
     def test_returns_first_speaker_when_index_zero(self):
         """Should return first speaker when index is 0."""
+
         def getSpeaker(speaker_combo):
             speaker_name = speaker_combo.itemText(speaker_combo.currentIndex())
             return speaker_name
@@ -191,6 +196,7 @@ class TestGetCommonFieldsLogic:
 
     def test_returns_fields_from_single_note(self):
         """Should return all fields for a single note."""
+
         # This is the logic from getCommonFields
         def getCommonFields(selected_notes, get_note_func):
             common_fields = set()
@@ -227,6 +233,7 @@ class TestGetCommonFieldsLogic:
 
     def test_returns_intersection_of_fields(self):
         """Should return only common fields across multiple notes."""
+
         def getCommonFields(selected_notes, get_note_func):
             common_fields = set()
             first = True
@@ -276,6 +283,7 @@ class TestGetCommonFieldsLogic:
 
     def test_raises_on_none_note(self):
         """Should raise exception when note is None."""
+
         def getCommonFields(selected_notes, get_note_func):
             common_fields = set()
             first = True
@@ -339,10 +347,7 @@ class TestConfigValidation:
         """Test that config.json has the expected structure."""
         import json
 
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "config.json"
-        )
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")
 
         with open(config_path) as f:
             config = json.load(f)
@@ -363,10 +368,7 @@ class TestConfigValidation:
         """Test that manifest.json has the expected structure."""
         import json
 
-        manifest_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "manifest.json"
-        )
+        manifest_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "manifest.json")
 
         with open(manifest_path) as f:
             manifest = json.load(f)

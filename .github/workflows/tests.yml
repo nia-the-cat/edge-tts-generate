@@ -11,6 +11,8 @@ jobs:
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +44,14 @@ jobs:
           file: coverage.xml
           flags: unittests
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,6 +83,8 @@ jobs:
   json-validation:
     name: Validate JSON files
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -99,6 +106,8 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -121,6 +130,7 @@ jobs:
     name: All Tests Passed
     needs: [test, lint, json-validation, integration]
     runs-on: ubuntu-latest
+    permissions: {}
     if: always()
     steps:
       - name: Check all jobs passed

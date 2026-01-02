@@ -90,10 +90,7 @@ class TestEnsureImportSiteLogic:
         """Test the pattern used to detect .pth files."""
         test_files = ["python314._pth", "python.exe", "python314.dll"]
 
-        pth_files = [
-            f for f in test_files
-            if f.endswith("._pth") and f.startswith("python")
-        ]
+        pth_files = [f for f in test_files if f.endswith("._pth") and f.startswith("python")]
 
         assert pth_files == ["python314._pth"]
 
@@ -268,4 +265,3 @@ class TestPythonVersionSpec:
         assert f"/python/{version}/" in url
         # Should appear in filename
         assert f"python-{version}-embed" in url
-

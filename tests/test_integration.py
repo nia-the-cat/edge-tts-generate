@@ -36,9 +36,32 @@ class TestConfigIntegration:
 
         # Valid language codes based on edge-tts
         valid_language_codes = [
-            "ja", "en", "zh", "ko", "de", "fr", "es", "pt", "it",
-            "ru", "ar", "hi", "tr", "pl", "nl", "sv", "da", "no",
-            "fi", "cs", "el", "he", "th", "vi", "id", "ms"
+            "ja",
+            "en",
+            "zh",
+            "ko",
+            "de",
+            "fr",
+            "es",
+            "pt",
+            "it",
+            "ru",
+            "ar",
+            "hi",
+            "tr",
+            "pl",
+            "nl",
+            "sv",
+            "da",
+            "no",
+            "fi",
+            "cs",
+            "el",
+            "he",
+            "th",
+            "vi",
+            "id",
+            "ms",
         ]
 
         for speaker in config["speakers"]:
@@ -88,10 +111,7 @@ class TestModuleImports:
 
     def test_external_runtime_imports(self):
         """external_runtime.py should import without errors."""
-        external_runtime = _load_module(
-            "external_runtime",
-            os.path.join(_base_path, "external_runtime.py")
-        )
+        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
 
         # Check key functions exist
         assert hasattr(external_runtime, "get_external_python")
@@ -103,10 +123,7 @@ class TestModuleImports:
         # Mock edge_tts since it's not installed
         sys.modules["edge_tts"] = MagicMock()
 
-        external_tts_runner = _load_module(
-            "external_tts_runner",
-            os.path.join(_base_path, "external_tts_runner.py")
-        )
+        external_tts_runner = _load_module("external_tts_runner", os.path.join(_base_path, "external_tts_runner.py"))
 
         assert hasattr(external_tts_runner, "main")
         assert hasattr(external_tts_runner, "synthesize")
@@ -117,10 +134,7 @@ class TestExternalRuntimeConstants:
 
     def test_python_version_is_pinned(self):
         """Python version should be specifically pinned."""
-        external_runtime = _load_module(
-            "external_runtime",
-            os.path.join(_base_path, "external_runtime.py")
-        )
+        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
 
         version = external_runtime.PYTHON_VERSION
         # Should be exact version, not a range
@@ -132,10 +146,7 @@ class TestExternalRuntimeConstants:
 
     def test_edge_tts_is_pinned(self):
         """edge-tts version should be pinned."""
-        external_runtime = _load_module(
-            "external_runtime",
-            os.path.join(_base_path, "external_runtime.py")
-        )
+        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
 
         spec = external_runtime.EDGE_TTS_SPEC
         # Should use == for exact version
@@ -240,6 +251,7 @@ class TestErrorHandling:
 
     def test_getCommonFields_logic_with_none_note(self):
         """getCommonFields logic should raise descriptive error for None note."""
+
         # Test the logic pattern from getCommonFields
         def getCommonFields(selected_notes, get_note_func):
             common_fields = set()

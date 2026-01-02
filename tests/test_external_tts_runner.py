@@ -40,13 +40,20 @@ class TestArgumentParsing:
         parser.add_argument("--rate", required=True)
         parser.add_argument("--volume", required=True)
 
-        args = parser.parse_args([
-            "--text-file", "/tmp/test.txt",
-            "--voice", "ja-JP-NanamiNeural",
-            "--pitch", "+0Hz",
-            "--rate", "+0%",
-            "--volume", "+0%",
-        ])
+        args = parser.parse_args(
+            [
+                "--text-file",
+                "/tmp/test.txt",
+                "--voice",
+                "ja-JP-NanamiNeural",
+                "--pitch",
+                "+0Hz",
+                "--rate",
+                "+0%",
+                "--volume",
+                "+0%",
+            ]
+        )
 
         assert args.text_file == "/tmp/test.txt"
         assert args.voice == "ja-JP-NanamiNeural"
@@ -160,9 +167,9 @@ class TestSynthesizeFunction:
             mock_tts = MagicMock()
 
             async def mock_stream():
-                # Empty audio for empty text
-                return
-                yield  # Make it a generator
+                # Empty async generator - no audio chunks
+                if False:  # Never yields, simulating empty response
+                    yield {"type": "audio", "data": b""}
 
             mock_tts.stream = mock_stream
 
@@ -234,11 +241,16 @@ class TestMainFunction:
 
             test_args = [
                 "external_tts_runner.py",
-                "--text-file", text_file,
-                "--voice", "en-US-JennyNeural",
-                "--pitch", "+0Hz",
-                "--rate", "+0%",
-                "--volume", "+0%",
+                "--text-file",
+                text_file,
+                "--voice",
+                "en-US-JennyNeural",
+                "--pitch",
+                "+0Hz",
+                "--rate",
+                "+0%",
+                "--volume",
+                "+0%",
             ]
 
             with patch("sys.argv", test_args):
