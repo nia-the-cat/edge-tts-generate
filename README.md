@@ -10,8 +10,10 @@ This is a text to speech addon for Anki that makes use of the edge-tts synthesis
 
 The add-on now bootstraps its own isolated Python 3.14 runtime when it first generates audio. No manual virtual environment creation or `pip install` steps are required. On first use the add-on will download the official embeddable Python package, install `edge-tts` inside it, and reuse that runtime for future sessions.
 
-1. Open the Anki card browser and right click on any card and select "Generate edge-tts Audio" from the dropdown
-    * You can drag and select multiple cards to generate audio for many cards at once. Note that if you select two different types of cards only the fields that they have in common will appear in the source/destination dropdown.
+1. Open the Anki card browser and access the audio generation feature through one of these methods:
+    * **From the Edit menu**: Click `Edit` → `Generate edge-tts Audio` (or use the keyboard shortcut `Ctrl+Shift+E`)
+    * **From the context menu**: Right-click on any card and select "Generate edge-tts Audio"
+    * You can select multiple cards to generate audio for many cards at once (batch processing). Note that if you select two different types of cards only the fields that they have in common will appear in the source/destination dropdown.
 
 2. Select the source and destination fields for generating audio
     * Source refers to which field the addon should read from to generate audio. For example you usually want to read from the `Sentence` field or similar.
