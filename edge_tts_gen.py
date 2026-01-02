@@ -21,6 +21,11 @@ from aqt.sound import av_player
 from .external_runtime import get_external_python
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
+TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
+ENTITY_RE = re.compile(r"(&[^;]+;)")
+KANJI_FURIGANA_RE = re.compile(r" ?\S*?\[(.*?)\]")
+BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
+WHITESPACE_RE = re.compile(" ")
 
 
 def _get_subprocess_flags():
@@ -586,19 +591,16 @@ def onEdgeTTSOptionSelected(browser):
             note_text = note[source_field]
 
             # Remove html tags https://stackoverflow.com/a/19730306
-            tag_re = re.compile(r"(<!--.*?-->|<[^>]*>)")
-            entity_re = re.compile(r"(&[^;]+;)")
-
-            note_text = entity_re.sub("", note_text)
-            note_text = tag_re.sub("", note_text)
+            note_text = ENTITY_RE.sub("", note_text)
+            note_text = TAG_RE.sub("", note_text)
 
             # Replace kanji with furigana from brackets
-            note_text = re.sub(r" ?\S*?\[(.*?)\]", r"\1", note_text)
+            note_text = KANJI_FURIGANA_RE.sub(r"\1", note_text)
             # Remove stuff between brackets. Usually japanese cards have pitch accent and reading info in brackets like 「 タイトル[;a,h] を 聞[き,きく;h]いた わけ[;a] じゃ ない[;a] ！」
             if dialog.ignore_brackets_checkbox.isChecked():
-                note_text = re.sub(r"\[.*?\]", "", note_text)
-            note_text = re.sub(
-                " ", "", note_text
+                note_text = BRACKET_CONTENT_RE.sub("", note_text)
+            note_text = WHITESPACE_RE.sub(
+                "", note_text
             )  # there's a lot of spaces for whatever reason which throws off the voice gen so we remove all spaces (japanese doesn't care about them anyway)
 
             return (note_text, speaker)
