@@ -118,3 +118,4 @@ This architecture keeps dependencies isolated from Anki's Python installation.
 - ✅ Support multiple languages and voices
 - ✅ Maintain compatibility with specified Anki versions
 - ✅ Follow Anki add-on best practices
+- ❌ **DO NOT take screenshots to show results** - describe changes in text only

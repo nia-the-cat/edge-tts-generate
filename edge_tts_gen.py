@@ -204,6 +204,9 @@ class MyDialog(qt.QDialog):
         self.speaker_combo.setCurrentIndex(speaker_combo_index)
 
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
+        self.preview_voice_button.setToolTip(
+            "Preview the selected voice with a sample sentence. First preview may take a few seconds to initialize the speech engine."
+        )
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
         self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
@@ -420,13 +423,50 @@ class MyDialog(qt.QDialog):
         preview_sentences = preview_sentences_by_lang.get(lang_code, preview_sentences_by_lang["en"])
 
         tup = (random.choice(preview_sentences), speaker)
-        result = GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
 
-        addon_path = dirname(__file__)
-        preview_path = join(addon_path, "edge_tts_preview.mp3")
-        with open(preview_path, "wb") as f:
-            f.write(result)
-        av_player.play_file(preview_path)
+        # Disable button and show loading state during generation
+        original_text = self.preview_voice_button.text()
+        self.preview_voice_button.setText("Loading preview (may take a few seconds)...")
+        self.preview_voice_button.setEnabled(False)
+
+        def generate_preview():
+            """Background task to generate preview audio"""
+            return GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
+
+        def on_preview_done(future):
+            """Callback when preview generation is complete"""
+            # Re-enable button
+            mw.taskman.run_on_main(
+                lambda: self.preview_voice_button.setEnabled(True)
+            )
+            mw.taskman.run_on_main(
+                lambda: self.preview_voice_button.setText(original_text)
+            )
+
+            try:
+                result = future.result()
+                
+                def play_preview():
+                    """Write file and play audio on main thread"""
+                    addon_path = dirname(__file__)
+                    preview_path = join(addon_path, "edge_tts_preview.mp3")
+                    with open(preview_path, "wb") as f:
+                        f.write(result)
+                    av_player.play_file(preview_path)
+                
+                mw.taskman.run_on_main(play_preview)
+            except Exception as exc:
+                error_msg = str(exc)
+                mw.taskman.run_on_main(
+                    lambda: QMessageBox.critical(
+                        self,
+                        "Preview Error",
+                        f"Failed to generate preview: {error_msg}"
+                    )
+                )
+
+        # Run preview generation in background thread
+        mw.taskman.run_in_background(generate_preview, on_preview_done)
 
 
 def GenerateAudioQuery(text_and_speaker_tuple, config):
