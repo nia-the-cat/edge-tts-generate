@@ -199,20 +199,32 @@ class MyDialog(qt.QDialog):
             self.speaker_combo.addItem(speaker)
         self.grid_layout.addWidget(self.speaker_combo, 2, 1)
 
+        self.speaker_status_label = qt.QLabel()
+        self.speaker_status_label.setWordWrap(True)
+        self.grid_layout.addWidget(self.speaker_status_label, 2, 2, 1, 2)
+
         last_speaker_name = config.get("last_speaker_name") or None
 
-        # find the speaker/style from the previously saved config data and pick it from the dropdown
-        speaker_combo_index = 0
-        i = 0
-        for speaker_item in [
-            self.speaker_combo.itemText(i) for i in range(self.speaker_combo.count())
-        ]:
-            if speaker_item == last_speaker_name:
-                speaker_combo_index = i
-                break
-            i += 1
+        if self.speaker_combo.count() > 0:
+            # find the speaker/style from the previously saved config data and pick it from the dropdown
+            speaker_combo_index = 0
+            i = 0
+            for speaker_item in [
+                self.speaker_combo.itemText(i) for i in range(self.speaker_combo.count())
+            ]:
+                if speaker_item == last_speaker_name:
+                    speaker_combo_index = i
+                    break
+                i += 1
 
-        self.speaker_combo.setCurrentIndex(speaker_combo_index)
+            self.speaker_combo.setCurrentIndex(speaker_combo_index)
+            self.speaker_status_label.hide()
+        else:
+            self.speaker_combo.setEnabled(False)
+            self.speaker_status_label.setText(
+                "No speakers configured. Add voices in the add-on config to enable generation."
+            )
+            self.speaker_status_label.setStyleSheet("color: #cc3300;")
 
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
         self.preview_voice_button.setToolTip(
@@ -230,6 +242,16 @@ class MyDialog(qt.QDialog):
 
         self.grid_layout.addWidget(self.cancel_button, 3, 0, 1, 2)
         self.grid_layout.addWidget(self.generate_button, 3, 3, 1, 2)
+
+        if self.speaker_combo.count() == 0:
+            self.preview_voice_button.setEnabled(False)
+            self.preview_voice_button.setToolTip(
+                "Add speakers in the add-on config to preview a voice."
+            )
+            self.generate_button.setEnabled(False)
+            self.generate_button.setToolTip(
+                "Add speakers in the add-on config to generate audio."
+            )
 
         def update_slider(slider, label, config_name, slider_desc, slider_unit):
             def update_this_slider(value):
