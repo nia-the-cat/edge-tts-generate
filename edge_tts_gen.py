@@ -1,26 +1,21 @@
-from aqt.qt import (
-    QComboBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QApplication,
-    QMessageBox,
-    QSlider,
-    QInputDialog,
-    QButtonGroup,
-    QRadioButton,
-)
-from aqt import browser, gui_hooks, qt
-from aqt import mw
-from aqt.sound import av_player
-from os.path import join, exists, dirname
 import os
 import random
+import re
 import subprocess
 import tempfile
 import uuid
-import re
-import traceback
+from os.path import dirname, exists, join
+
+from aqt import mw, qt
+from aqt.qt import (
+    QButtonGroup,
+    QInputDialog,
+    QLabel,
+    QMessageBox,
+    QRadioButton,
+    QSlider,
+)
+from aqt.sound import av_player
 
 from .external_runtime import get_external_python
 
@@ -39,7 +34,7 @@ def getCommonFields(selected_notes):
                 f"Note with id {note_id} is None.\nNotes: {','.join([mw.col.get_note(id) for id in selected_notes])}.\nPlease submit an issue with more information about what cards caused this at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
             )
         model = note.note_type()
-        model_fields = set([f["name"] for f in model["flds"]])
+        model_fields = {f["name"] for f in model["flds"]}
         if first:
             common_fields = model_fields  # Take the first one as is and we will intersect it with the following ones
         else:
