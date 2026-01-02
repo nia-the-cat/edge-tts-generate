@@ -35,13 +35,25 @@ async def synthesize_batch(args: argparse.Namespace) -> List[Dict[str, str]]:
         payload = json.load(handle)
 
     items = payload.get("items", [])
-    results: List[Dict[str, str]] = []
+    identifiers: List[str] = []
+    tasks: List[asyncio.Task[bytes]] = []
+
     for item in items:
         text = item.get("text", "")
-        identifier = str(item.get("id", ""))
-        audio_bytes = await synthesize_text(text, args)
-        results.append({"id": identifier, "audio": base64.b64encode(audio_bytes).decode("ascii")})
-    return results
+        identifiers.append(str(item.get("id", "")))
+        tasks.append(asyncio.create_task(synthesize_text(text, args)))
+
+    audio_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for result in audio_results:
+        if isinstance(result, Exception):
+            raise RuntimeError("Failed to synthesize text in batch") from result
+
+    ordered_results = sorted(zip(identifiers, audio_results), key=lambda pair: pair[0])
+    return [
+        {"id": identifier, "audio": base64.b64encode(audio_bytes).decode("ascii")}
+        for identifier, audio_bytes in ordered_results
+    ]
 
 
 def main() -> int:
