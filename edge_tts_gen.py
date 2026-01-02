@@ -420,13 +420,45 @@ class MyDialog(qt.QDialog):
         preview_sentences = preview_sentences_by_lang.get(lang_code, preview_sentences_by_lang["en"])
 
         tup = (random.choice(preview_sentences), speaker)
-        result = GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
 
-        addon_path = dirname(__file__)
-        preview_path = join(addon_path, "edge_tts_preview.mp3")
-        with open(preview_path, "wb") as f:
-            f.write(result)
-        av_player.play_file(preview_path)
+        # Disable button and show loading state during generation
+        original_text = self.preview_voice_button.text()
+        self.preview_voice_button.setText("Generating preview...")
+        self.preview_voice_button.setEnabled(False)
+
+        def generate_preview():
+            """Background task to generate preview audio"""
+            return GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
+
+        def on_preview_done(future):
+            """Callback when preview generation is complete"""
+            # Re-enable button
+            mw.taskman.run_on_main(
+                lambda: self.preview_voice_button.setEnabled(True)
+            )
+            mw.taskman.run_on_main(
+                lambda: self.preview_voice_button.setText(original_text)
+            )
+
+            try:
+                result = future.result()
+                addon_path = dirname(__file__)
+                preview_path = join(addon_path, "edge_tts_preview.mp3")
+                with open(preview_path, "wb") as f:
+                    f.write(result)
+                av_player.play_file(preview_path)
+            except Exception as exc:
+                error_msg = str(exc)
+                mw.taskman.run_on_main(
+                    lambda: QMessageBox.critical(
+                        self,
+                        "Preview Error",
+                        f"Failed to generate preview: {error_msg}"
+                    )
+                )
+
+        # Run preview generation in background thread
+        mw.taskman.run_in_background(generate_preview, on_preview_done)
 
 
 def GenerateAudioQuery(text_and_speaker_tuple, config):
