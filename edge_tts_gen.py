@@ -10,13 +10,16 @@ from aqt.qt import (
 from aqt import browser, gui_hooks, qt
 from aqt import mw
 from aqt.sound import av_player
-from aqt.utils import showText
 from os.path import join, exists, dirname
+import os
 import random
+import subprocess
+import tempfile
 import uuid
 import re
 import traceback
-import re
+
+from .external_runtime import get_external_python
 
 
 def getCommonFields(selected_notes):
@@ -266,34 +269,60 @@ class MyDialog(qt.QDialog):
 
 
 def GenerateAudioQuery(text_and_speaker_tuple, config):
+    text = text_and_speaker_tuple[0]
+    voice = text_and_speaker_tuple[1]
+    addon_dir = dirname(__file__)
+
     try:
-        import asyncio
-        import edge_tts
-
-        text = text_and_speaker_tuple[0]
-        voice = text_and_speaker_tuple[1]
-
-        tts = edge_tts.Communicate(
-            text,
-            voice=voice,
-            pitch=f"{config.get('pitch_slider_value', 0):+}Hz",
-            rate=f"{config.get('speed_slider_value', 0):+}%",
-            volume=f"{config.get('volume_slider_value', 0):+}%",
-        )
-
-        async def GetMp3(tts):
-            mp3 = b""
-            async for chunk in tts.stream():
-                if chunk["type"] == "audio":
-                    mp3 += chunk["data"]
-            return mp3
-
-        mp3 = asyncio.run(GetMp3(tts))
-        return mp3
-    except Exception as e:
+        python_exe = get_external_python(addon_dir)
+    except Exception:
         raise Exception(
-            f"Unable to generate audio for the following text: `{text}`.\n{traceback.format_exc()}"
+            "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
         )
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", suffix=".txt", delete=False
+    ) as handle:
+        handle.write(text)
+        text_path = handle.name
+
+    pitch = f"{config.get('pitch_slider_value', 0):+}Hz"
+    rate = f"{config.get('speed_slider_value', 0):+}%"
+    volume = f"{config.get('volume_slider_value', 0):+}%"
+
+    runner_path = join(addon_dir, "external_tts_runner.py")
+    command = [
+        python_exe,
+        runner_path,
+        "--text-file",
+        text_path,
+        "--voice",
+        voice,
+        "--pitch",
+        pitch,
+        "--rate",
+        rate,
+        "--volume",
+        volume,
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError as exc:
+        error_output = exc.stderr.decode("utf-8", errors="replace")
+        raise Exception(
+            f"Unable to generate audio for `{text}`. External runner failed with: {error_output}"
+        )
+    finally:
+        if exists(text_path):
+            os.remove(text_path)
+
+    return result.stdout
 
 
 def onEdgeTTSOptionSelected(browser):
