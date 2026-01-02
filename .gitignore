@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Anki add-on build artifacts
+*.ankiaddon
+
 # C extensions
 *.so
 
