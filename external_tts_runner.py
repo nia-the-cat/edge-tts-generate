@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 import sys
 
 import edge_tts
