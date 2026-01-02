@@ -1,7 +1,6 @@
 import base64
 import json
 import os
-import random
 import re
 import subprocess
 import sys
@@ -189,7 +188,7 @@ class MyDialog(qt.QDialog):
         # TODO: Does anyone actually want to not ignore stuff in brackets? The checkbox is here if we need it but I don't think anyone wants brackets to be read
         self.ignore_brackets_checkbox = qt.QCheckBox("Ignore stuff in brackets [...]")
         self.ignore_brackets_checkbox.setToolTip(
-            "Ignores things between brackets. Usually Japanese cards have pitch accent and reading info in brackets. Leave this checked unless you really know what you're doing"
+            "Ignores things between brackets. Some flashcard formats use brackets for readings, pitch accent, or other metadata. Leave this checked unless you want bracket contents read aloud."
         )
         self.ignore_brackets_checkbox.setChecked(config.get("ignore_brackets_enabled", True))
         self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
@@ -371,85 +370,64 @@ class MyDialog(qt.QDialog):
         else:
             return "append"
 
+    def _getPreviewTextFromNote(self, source_field, speaker):
+        """Get text from the first selected note's source field for preview."""
+        if not self.selected_notes:
+            return None
+
+        # Get the first note
+        note_id = self.selected_notes[0]
+        note = mw.col.get_note(note_id)
+        if note is None:
+            return None
+
+        try:
+            note_text = note[source_field]
+        except KeyError:
+            return None
+
+        if not note_text:
+            return None
+
+        # Clean the text similar to how it's done in getNoteTextAndSpeaker
+        # Remove HTML entities and tags
+        note_text = ENTITY_RE.sub("", note_text)
+        note_text = TAG_RE.sub("", note_text)
+
+        # Replace text with reading from brackets (e.g., 漢字[かんじ] -> かんじ)
+        note_text = KANJI_FURIGANA_RE.sub(r"\1", note_text)
+
+        # Remove stuff between brackets if option is enabled
+        if self.ignore_brackets_checkbox.isChecked():
+            note_text = BRACKET_CONTENT_RE.sub("", note_text)
+
+        # Strip whitespace for languages that don't use spaces (e.g., Japanese, Chinese)
+        if speaker:
+            language_code = speaker.split("-")[0].lower()
+            if language_code in {"ja", "zh"}:
+                note_text = WHITESPACE_RE.sub("", note_text)
+
+        return note_text.strip() if note_text else None
+
     def PreviewVoice(self):
         speaker = getSpeaker(self.speaker_combo)
         if speaker is None:
             raise Exception("getSpeaker returned None in PreviewVoice")
 
-        # Language-specific preview sentences
-        preview_sentences_by_lang = {
-            "ja": [
-                "こんにちは、これはテスト文章です。",
-                "ＤＶＤの再生ボタンを押して、書斎に向かった。",
-                "さてと 、 ご馳走様でした",
-                "真似しないでくれる？",
-                "な 、 なんだよ ？　 テンション高いな",
-            ],
-            "en": [
-                "Hello, this is a test sentence.",
-                "The quick brown fox jumps over the lazy dog.",
-                "Thank you for using this add-on.",
-                "How are you doing today?",
-                "This is a preview of the selected voice.",
-            ],
-            "de": [
-                "Hallo, das ist ein Testsatz.",
-                "Wie geht es dir heute?",
-                "Vielen Dank für die Nutzung dieses Add-ons.",
-                "Der schnelle braune Fuchs springt über den faulen Hund.",
-                "Dies ist eine Vorschau der ausgewählten Stimme.",
-            ],
-            "zh": [
-                "你好，这是一个测试句子。",
-                "谢谢你使用这个插件。",
-                "今天天气怎么样？",
-                "快速的棕色狐狸跳过懒狗。",
-                "这是所选语音的预览。",
-            ],
-            "ko": [
-                "안녕하세요, 이것은 테스트 문장입니다.",
-                "이 애드온을 사용해 주셔서 감사합니다.",
-                "오늘 기분이 어떠세요?",
-                "빠른 갈색 여우가 게으른 개를 뛰어넘습니다.",
-                "선택한 음성의 미리보기입니다.",
-            ],
-            "fr": [
-                "Bonjour, ceci est une phrase de test.",
-                "Merci d'utiliser cette extension.",
-                "Comment allez-vous aujourd'hui?",
-                "Le rapide renard brun saute par-dessus le chien paresseux.",
-                "Ceci est un aperçu de la voix sélectionnée.",
-            ],
-            "es": [
-                "Hola, esta es una oración de prueba.",
-                "Gracias por usar este complemento.",
-                "¿Cómo estás hoy?",
-                "El rápido zorro marrón salta sobre el perro perezoso.",
-                "Esta es una vista previa de la voz seleccionada.",
-            ],
-            "pt": [
-                "Olá, esta é uma frase de teste.",
-                "Obrigado por usar este complemento.",
-                "Como você está hoje?",
-                "A rápida raposa marrom pula sobre o cão preguiçoso.",
-                "Esta é uma prévia da voz selecionada.",
-            ],
-            "it": [
-                "Ciao, questa è una frase di prova.",
-                "Grazie per aver utilizzato questo componente aggiuntivo.",
-                "Come stai oggi?",
-                "La veloce volpe marrone salta sopra il cane pigro.",
-                "Questa è un'anteprima della voce selezionata.",
-            ],
-        }
+        # Get the actual text from the first selected note's source field
+        source_field = self.source_combo.itemText(self.source_combo.currentIndex())
+        preview_text = self._getPreviewTextFromNote(source_field, speaker)
 
-        # Extract language code from voice name (e.g., "ja-JP-NanamiNeural" -> "ja")
-        lang_code = speaker.split("-")[0] if "-" in speaker else "en"
+        if not preview_text:
+            QMessageBox.warning(
+                self,
+                "No Preview Text",
+                f"The source field '{source_field}' is empty in the selected note(s). "
+                "Please select a note with text content to preview the voice.",
+            )
+            return
 
-        # Get preview sentences for the language, fallback to English if not found
-        preview_sentences = preview_sentences_by_lang.get(lang_code, preview_sentences_by_lang["en"])
-
-        tup = (random.choice(preview_sentences), speaker)
+        tup = (preview_text, speaker)
 
         # Disable button and show loading state during generation
         original_text = self.preview_voice_button.text()
@@ -645,16 +623,16 @@ def onEdgeTTSOptionSelected(browser):
             note_text = ENTITY_RE.sub("", note_text)
             note_text = TAG_RE.sub("", note_text)
 
-            # Replace kanji with furigana from brackets
+            # Replace text with reading from brackets (e.g., 漢字[かんじ] -> かんじ)
             note_text = KANJI_FURIGANA_RE.sub(r"\1", note_text)
-            # Remove stuff between brackets. Usually japanese cards have pitch accent and reading info in brackets like 「 タイトル[;a,h] を 聞[き,きく;h]いた わけ[;a] じゃ ない[;a] ！」
+            # Remove stuff between brackets (commonly used for readings, pitch accent, or metadata)
             if dialog.ignore_brackets_checkbox.isChecked():
                 note_text = BRACKET_CONTENT_RE.sub("", note_text)
 
             if _should_strip_whitespace(speaker):
                 note_text = WHITESPACE_RE.sub(
                     "", note_text
-                )  # there's a lot of spaces for whatever reason which throws off the voice gen so we remove all spaces (japanese doesn't care about them anyway)
+                )  # Strip spaces for languages that don't use them (e.g., Japanese, Chinese)
 
             return (note_text, speaker)
 
