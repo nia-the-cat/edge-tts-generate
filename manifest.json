@@ -1,4 +1,6 @@
 {
   "package": "edge-tts-generator",
-  "name": "EdgeTTS Audio Generator"
+  "name": "EdgeTTS Audio Generator",
+  "min_point_version": 35,
+  "max_point_version": 231000
 }
