@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 # Import external_tts_runner from the parent directory without adding it to sys.path
 _module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "external_tts_runner.py")
 
@@ -260,11 +261,9 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             async def fake_synthesize_text(text, _args):
-                return f"audio-{text}".encode("utf-8")
+                return f"audio-{text}".encode()
 
-            with patch.object(
-                external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text
-            ):
+            with patch.object(external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text):
                 result = asyncio.run(external_tts_runner.synthesize_batch(args))
 
             expected = [

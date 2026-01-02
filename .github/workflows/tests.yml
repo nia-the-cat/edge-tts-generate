@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     steps:
       - name: Checkout repository
@@ -27,6 +27,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: requirements-test.txt
 
       - name: Install test dependencies
         run: |
@@ -39,7 +41,7 @@ jobs:
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         with:
           file: coverage.xml
           flags: unittests
@@ -59,26 +61,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements-test.txt
 
       - name: Install linting tools
         run: |
           python -m pip install --upgrade pip
           pip install ruff
 
-      - name: Run ruff linter on tests
+      - name: Run ruff linter
         run: |
-          ruff check tests/ --output-format=github
-
-      - name: Run ruff linter on source (advisory)
-        run: |
-          ruff check . --exclude=tests --output-format=github || echo "Note: Source linting issues found but not blocking CI"
-        continue-on-error: true
+          ruff check . --output-format=github
 
       - name: Run ruff formatter check
         run: |
-          ruff format --check tests/
-        continue-on-error: true  # Formatting is advisory for now
+          ruff format --check .
 
   json-validation:
     name: Validate JSON files
@@ -115,7 +113,9 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements-test.txt
 
       - name: Install dependencies
         run: |

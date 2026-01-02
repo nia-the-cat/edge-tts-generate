@@ -10,7 +10,6 @@ import uuid
 from os.path import dirname, exists, join
 
 from aqt import mw, qt
-from aqt.utils import tooltip
 from aqt.qt import (
     QButtonGroup,
     QInputDialog,
@@ -20,8 +19,10 @@ from aqt.qt import (
     QSlider,
 )
 from aqt.sound import av_player
+from aqt.utils import tooltip
 
 from .external_runtime import get_external_python
+
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
 TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
@@ -110,13 +111,13 @@ class MyDialog(qt.QDialog):
         i = 0
         for field in self.common_fields:
             if last_source_field is None:
-                if "expression" == field.lower() or "sentence" == field.lower():
+                if field.lower() == "expression" or field.lower() == "sentence":
                     source_field_index = i
             elif field == last_source_field:
                 source_field_index = i
 
             if last_destination_field is None:
-                if "audio" == field.lower():
+                if field.lower() == "audio":
                     destination_field_index = i
             elif field == last_destination_field:
                 destination_field_index = i
@@ -155,7 +156,9 @@ class MyDialog(qt.QDialog):
         self.audio_handling_group = QButtonGroup(self)
 
         self.append_radio = QRadioButton("Append (keep existing content)")
-        self.append_radio.setToolTip("Add the generated audio to the field without removing any existing content. This is the safest option.")
+        self.append_radio.setToolTip(
+            "Add the generated audio to the field without removing any existing content. This is the safest option."
+        )
 
         self.overwrite_radio = QRadioButton("Overwrite (replace content)")
         self.overwrite_radio.setToolTip("Replace the entire content of the destination field with the new audio")
@@ -188,9 +191,7 @@ class MyDialog(qt.QDialog):
         self.ignore_brackets_checkbox.setToolTip(
             "Ignores things between brackets. Usually Japanese cards have pitch accent and reading info in brackets. Leave this checked unless you really know what you're doing"
         )
-        self.ignore_brackets_checkbox.setChecked(
-            config.get("ignore_brackets_enabled", True)
-        )
+        self.ignore_brackets_checkbox.setChecked(config.get("ignore_brackets_enabled", True))
         self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
 
         self.grid_layout.addWidget(qt.QLabel("Speaker: "), 2, 0)
@@ -210,9 +211,7 @@ class MyDialog(qt.QDialog):
             # find the speaker/style from the previously saved config data and pick it from the dropdown
             speaker_combo_index = 0
             i = 0
-            for speaker_item in [
-                self.speaker_combo.itemText(i) for i in range(self.speaker_combo.count())
-            ]:
+            for speaker_item in [self.speaker_combo.itemText(i) for i in range(self.speaker_combo.count())]:
                 if speaker_item == last_speaker_name:
                     speaker_combo_index = i
                     break
@@ -246,13 +245,9 @@ class MyDialog(qt.QDialog):
 
         if self.speaker_combo.count() == 0:
             self.preview_voice_button.setEnabled(False)
-            self.preview_voice_button.setToolTip(
-                "Add speakers in the add-on config to preview a voice."
-            )
+            self.preview_voice_button.setToolTip("Add speakers in the add-on config to preview a voice.")
             self.generate_button.setEnabled(False)
-            self.generate_button.setToolTip(
-                "Add speakers in the add-on config to generate audio."
-            )
+            self.generate_button.setToolTip("Add speakers in the add-on config to generate audio.")
 
         def update_slider(slider, label, config_name, slider_desc, slider_unit):
             def update_this_slider(value):
@@ -270,9 +265,7 @@ class MyDialog(qt.QDialog):
         volume_label = QLabel(f"Volume scale {volume_slider.value()}%")
 
         volume_slider.valueChanged.connect(
-            update_slider(
-                volume_slider, volume_label, "volume_slider_value", "Volume scale", "%"
-            )
+            update_slider(volume_slider, volume_label, "volume_slider_value", "Volume scale", "%")
         )
 
         self.grid_layout.addWidget(volume_label, 4, 0, 1, 2)
@@ -286,9 +279,7 @@ class MyDialog(qt.QDialog):
         pitch_label = QLabel(f"Pitch scale {pitch_slider.value()}Hz")
 
         pitch_slider.valueChanged.connect(
-            update_slider(
-                pitch_slider, pitch_label, "pitch_slider_value", "Pitch scale", "Hz"
-            )
+            update_slider(pitch_slider, pitch_label, "pitch_slider_value", "Pitch scale", "Hz")
         )
 
         self.grid_layout.addWidget(pitch_label, 5, 0, 1, 2)
@@ -302,9 +293,7 @@ class MyDialog(qt.QDialog):
         speed_label = QLabel(f"Speed scale {speed_slider.value()}%")
 
         speed_slider.valueChanged.connect(
-            update_slider(
-                speed_slider, speed_label, "speed_slider_value", "Rate scale", "%"
-            )
+            update_slider(speed_slider, speed_label, "speed_slider_value", "Rate scale", "%")
         )
 
         self.grid_layout.addWidget(speed_label, 6, 0, 1, 2)
@@ -318,10 +307,7 @@ class MyDialog(qt.QDialog):
         """Handle destination field dropdown change - prompt for new field name if 'Create new field' is selected"""
         if self.destination_combo.itemText(index) == CREATE_NEW_FIELD_OPTION:
             field_name, ok = QInputDialog.getText(
-                self,
-                "Create New Field",
-                "Enter the name for the new audio field:",
-                text="Audio"
+                self, "Create New Field", "Enter the name for the new audio field:", text="Audio"
             )
             if ok and field_name.strip():
                 field_name = field_name.strip()
@@ -330,7 +316,7 @@ class MyDialog(qt.QDialog):
                     QMessageBox.warning(
                         self,
                         "Field Exists",
-                        f"A field named '{field_name}' already exists. Please select it from the dropdown or choose a different name."
+                        f"A field named '{field_name}' already exists. Please select it from the dropdown or choose a different name.",
                     )
                     # Reset to first item
                     self.destination_combo.setCurrentIndex(0)
@@ -345,9 +331,7 @@ class MyDialog(qt.QDialog):
                 self.destination_combo.setCurrentIndex(0)
 
     def pre_accept(self):
-        destination_text = self.destination_combo.itemText(
-            self.destination_combo.currentIndex()
-        )
+        destination_text = self.destination_combo.itemText(self.destination_combo.currentIndex())
         source_text = self.source_combo.itemText(self.source_combo.currentIndex())
 
         if len(self.common_fields) < 1:
@@ -479,16 +463,12 @@ class MyDialog(qt.QDialog):
         def on_preview_done(future):
             """Callback when preview generation is complete"""
             # Re-enable button
-            mw.taskman.run_on_main(
-                lambda: self.preview_voice_button.setEnabled(True)
-            )
-            mw.taskman.run_on_main(
-                lambda: self.preview_voice_button.setText(original_text)
-            )
+            mw.taskman.run_on_main(lambda: self.preview_voice_button.setEnabled(True))
+            mw.taskman.run_on_main(lambda: self.preview_voice_button.setText(original_text))
 
             try:
                 result = future.result()
-                
+
                 def play_preview():
                     """Write file and play audio on main thread"""
                     addon_path = dirname(__file__)
@@ -496,16 +476,12 @@ class MyDialog(qt.QDialog):
                     with open(preview_path, "wb") as f:
                         f.write(result)
                     av_player.play_file(preview_path)
-                
+
                 mw.taskman.run_on_main(play_preview)
             except Exception as exc:
                 error_msg = str(exc)
                 mw.taskman.run_on_main(
-                    lambda: QMessageBox.critical(
-                        self,
-                        "Preview Error",
-                        f"Failed to generate preview: {error_msg}"
-                    )
+                    lambda: QMessageBox.critical(self, "Preview Error", f"Failed to generate preview: {error_msg}")
                 )
 
         # Run preview generation in background thread
@@ -520,21 +496,14 @@ def GenerateAudioBatch(text_speaker_items, config):
 
     try:
         python_exe = get_external_python(addon_dir)
-    except Exception:
+    except Exception as exc:
         raise Exception(
             "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
-        )
+        ) from exc
 
-    payload = {
-        "items": [
-            {"id": identifier, "text": text}
-            for identifier, text, _voice in text_speaker_items
-        ]
-    }
+    payload = {"items": [{"id": identifier, "text": text} for identifier, text, _voice in text_speaker_items]}
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", suffix=".json", delete=False
-    ) as handle:
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as handle:
         json.dump(payload, handle)
         batch_path = handle.name
 
@@ -564,17 +533,13 @@ def GenerateAudioBatch(text_speaker_items, config):
         result = subprocess.run(
             command,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             **_get_subprocess_flags(),
         )
     except subprocess.CalledProcessError as exc:
         error_output = exc.stderr
-        raise Exception(
-            "Unable to generate audio. External runner failed with: "
-            f"{error_output}"
-        )
+        raise Exception(f"Unable to generate audio. External runner failed with: {error_output}") from exc
     finally:
         if exists(batch_path):
             os.remove(batch_path)
@@ -582,9 +547,7 @@ def GenerateAudioBatch(text_speaker_items, config):
     try:
         decoded_results = json.loads(result.stdout or "[]")
     except json.JSONDecodeError as exc:
-        raise Exception(
-            f"Failed to parse audio generation result: {exc}"
-        ) from exc
+        raise Exception(f"Failed to parse audio generation result: {exc}") from exc
 
     audio_map = {}
     for item in decoded_results:
@@ -593,9 +556,7 @@ def GenerateAudioBatch(text_speaker_items, config):
         try:
             audio_map[identifier] = base64.b64decode(audio_b64)
         except Exception as exc:
-            raise Exception(
-                f"Failed to decode audio data for item {identifier}: {exc}"
-            ) from exc
+            raise Exception(f"Failed to decode audio data for item {identifier}: {exc}") from exc
     return audio_map
 
 
@@ -643,9 +604,7 @@ def onEdgeTTSOptionSelected(browser):
             raise Exception("getSpeaker returned None in my_action")
 
         source_field = dialog.source_combo.itemText(dialog.source_combo.currentIndex())
-        destination_field = dialog.destination_combo.itemText(
-            dialog.destination_combo.currentIndex()
-        )
+        destination_field = dialog.destination_combo.itemText(dialog.destination_combo.currentIndex())
 
         # Get the audio handling mode
         audio_handling_mode = dialog.getAudioHandlingMode()
@@ -653,9 +612,7 @@ def onEdgeTTSOptionSelected(browser):
         # Check if we need to create a new field
         new_field_name = dialog.new_field_name
 
-        speaker_combo_text = dialog.speaker_combo.itemText(
-            dialog.speaker_combo.currentIndex()
-        )
+        speaker_combo_text = dialog.speaker_combo.itemText(dialog.speaker_combo.currentIndex())
 
         # Save previously used stuff
         config = mw.addonManager.getConfig(__name__)
@@ -724,17 +681,11 @@ def onEdgeTTSOptionSelected(browser):
             mw.progress.finish()
             mw.reset()
 
-        fut = mw.taskman.run_in_background(
-            lambda: GenerateAudio(dialog.selected_notes), on_done
-        )
+        mw.taskman.run_in_background(lambda: GenerateAudio(dialog.selected_notes), on_done)
 
         def GenerateAudio(notes):
             total_notes = len(notes)
-            mw.taskman.run_on_main(
-                lambda: mw.progress.start(
-                    label="Generating Audio", max=total_notes, immediate=True
-                )
-            )
+            mw.taskman.run_on_main(lambda: mw.progress.start(label="Generating Audio", max=total_notes, immediate=True))
             notes_so_far = 0
             skipped_count = 0
             missing_text_skips = 0
@@ -765,17 +716,13 @@ def onEdgeTTSOptionSelected(browser):
             if not pending_items:
                 return
 
-            audio_map = GenerateAudioBatch(
-                pending_items, mw.addonManager.getConfig(__name__)
-            )
+            audio_map = GenerateAudioBatch(pending_items, mw.addonManager.getConfig(__name__))
 
             for note_id in pending_note_ids:
                 notes_so_far += 1
                 audio_data = audio_map.get(str(note_id))
                 if audio_data is None:
-                    raise Exception(
-                        f"No audio returned for note {note_id}. Please try again."
-                    )
+                    raise Exception(f"No audio returned for note {note_id}. Please try again.")
 
                 media_dir = mw.col.media.dir()
 
@@ -808,9 +755,7 @@ def onEdgeTTSOptionSelected(browser):
 
             if missing_text_skips > 0:
                 mw.taskman.run_on_main(
-                    lambda: tooltip(
-                        f"Skipped {missing_text_skips} notes with no text in the source field."
-                    )
+                    lambda: tooltip(f"Skipped {missing_text_skips} notes with no text in the source field.")
                 )
 
     else:

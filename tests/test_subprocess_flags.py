@@ -8,6 +8,7 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+
 # Load external_runtime from the parent directory
 _external_runtime_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "external_runtime.py"

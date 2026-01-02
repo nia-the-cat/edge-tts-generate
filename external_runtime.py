@@ -6,11 +6,9 @@ import urllib.request
 import zipfile
 from functools import lru_cache
 
+
 PYTHON_VERSION = "3.14.2"
-EMBED_URL = (
-    f"https://www.python.org/ftp/python/{PYTHON_VERSION}/"
-    f"python-{PYTHON_VERSION}-embed-amd64.zip"
-)
+EMBED_URL = f"https://www.python.org/ftp/python/{PYTHON_VERSION}/python-{PYTHON_VERSION}-embed-amd64.zip"
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 EDGE_TTS_SPEC = "edge-tts==7.2.7"
 
@@ -36,11 +34,7 @@ def _extract_zip(zip_path: str, target_dir: str) -> None:
 
 
 def _ensure_import_site(python_dir: str) -> None:
-    pth_files = [
-        file
-        for file in os.listdir(python_dir)
-        if file.endswith("._pth") and file.startswith("python")
-    ]
+    pth_files = [file for file in os.listdir(python_dir) if file.endswith("._pth") and file.startswith("python")]
     for pth_name in pth_files:
         pth_path = os.path.join(python_dir, pth_name)
         with open(pth_path, encoding="utf-8") as handle:
@@ -59,8 +53,7 @@ def _ensure_get_pip(python_exe: str, cache_dir: str) -> str:
     subprocess.run(
         [python_exe, script_path, "--no-warn-script-location"],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         **_get_subprocess_flags(),
     )
     return script_path
@@ -71,8 +64,7 @@ def _python_can_import(python_exe: str, module: str) -> bool:
         subprocess.run(
             [python_exe, "-c", f"import {module}"],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
         return True
@@ -98,8 +90,7 @@ def get_external_python(addon_dir: str) -> str:
         subprocess.run(
             [python_exe, "-m", "pip", "install", "--upgrade", "pip"],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
 
@@ -107,8 +98,7 @@ def get_external_python(addon_dir: str) -> str:
         subprocess.run(
             [python_exe, "-m", "pip", "install", EDGE_TTS_SPEC],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
 

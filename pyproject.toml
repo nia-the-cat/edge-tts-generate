@@ -1,3 +1,32 @@
+[project]
+name = "edge-tts-generate"
+version = "1.0.0"
+description = "Anki add-on for generating text-to-speech audio using Microsoft Edge TTS"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+keywords = ["anki", "tts", "text-to-speech", "edge-tts", "language-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Education",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.8.0",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py39"
@@ -11,14 +40,57 @@ select = [
     "B",      # flake8-bugbear
     "C4",     # flake8-comprehensions
     "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "RUF",    # Ruff-specific rules
+    "PT",     # flake8-pytest-style
+    "PIE",    # flake8-pie
+    "PL",     # pylint
+    "PERF",   # perflint
 ]
 ignore = [
-    "E501",   # line too long, handled by line-length
-    "B008",   # do not perform function calls in argument defaults
+    "E501",     # line too long, handled by line-length
+    "B008",     # do not perform function calls in argument defaults
+    "PLR0913",  # too many arguments to function call
+    "PLR2004",  # magic value comparison
+    "PLW2901",  # loop variable overwritten by assignment target
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B011"]  # Allow assert False in tests
+"tests/*" = [
+    "B011",     # Allow assert False in tests
+    "PLR2004",  # Allow magic values in tests
+    "PT004",    # Fixture does not return anything
+    "PT011",    # pytest.raises should use match parameter (not always needed)
+    "PT012",    # pytest.raises should contain a single statement
+    "PLC0415",  # Allow imports not at top-level in tests
+    "SIM108",   # Allow if-else instead of ternary for readability in tests
+    "SIM117",   # Allow nested with statements in tests
+    "RUF001",   # Allow ambiguous Unicode (used for testing Japanese text)
+    "PIE790",   # Allow pass statements in test callbacks
+    "PLR0133",  # Allow constant comparisons in tests (for verifying values)
+]
+"__init__.py" = [
+    "PLC0415",  # Allow lazy imports in __init__.py for performance
+]
+"edge_tts_gen.py" = [
+    "PLR0912",  # Allow many branches in complex UI dialog
+    "PLR0915",  # Allow many statements in complex UI functions
+    "SIM108",   # Allow if-else instead of ternary for readability
+    "SIM113",   # Allow manual index incrementing in specific cases
+    "RUF001",   # Allow fullwidth Unicode characters (Japanese/Chinese text)
+    "RUF003",   # Allow fullwidth Unicode in comments (Japanese text examples)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["edge_tts_gen", "external_runtime", "external_tts_runner"]
+force-single-line = false
+lines-after-imports = 2
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -26,11 +98,20 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
-addopts = "-v --tb=short"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["tests/*", "runtime/*", "__pycache__/*"]
+omit = ["tests/*", "runtime/*", "__pycache__/*", ".venv/*"]
+branch = true
 
 [tool.coverage.report]
 exclude_lines = [
@@ -38,4 +119,9 @@ exclude_lines = [
     "def __repr__",
     "raise AssertionError",
     "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
 ]
+show_missing = true
+skip_covered = true
+fail_under = 0
