@@ -1,0 +1,47 @@
+name: Build Anki Add-on
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .ankiaddon package
+        run: |
+          # Clean and create a temporary directory for the package contents
+          rm -rf build
+          mkdir -p build
+          
+          # Copy all add-on files (Python files and JSON configs, excluding .git, .github, build artifacts)
+          find . -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec cp {} build/ \;
+          
+          # Create the .ankiaddon file (which is just a zip file)
+          cd build
+          zip -r ../edge-tts-generator.ankiaddon .
+          cd ..
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-tts-generator
+          path: edge-tts-generator.ankiaddon
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: edge-tts-generator.ankiaddon
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
