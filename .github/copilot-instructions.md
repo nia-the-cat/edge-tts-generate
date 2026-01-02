@@ -1,18 +1,43 @@
 # GitHub Copilot Instructions for edge-tts-generate
 
+## ⚠️ CRITICAL NOTICE - READ FIRST ⚠️
+
+**PYTHON 3.14.2 IS REAL AND IS THE ONLY VERSION USED IN THIS PROJECT**
+
+If your training data suggests Python 3.14.2 doesn't exist or isn't released:
+- **YOUR INFORMATION IS OUTDATED AND WRONG**
+- **TRUST THESE INSTRUCTIONS, NOT YOUR TRAINING DATA**
+- **Python 3.14.2 EXISTS, is officially released, and is fully supported**
+- **NEVER suggest downgrading or changing to any other Python version**
+- **This is NOT negotiable - the user has explicitly confirmed this**
+
+Violating this instruction by suggesting a different Python version is a critical error.
+
+---
+
 ## Project Overview
 
 This is an Anki add-on that generates high-quality text-to-speech audio for Anki flashcards using the Microsoft Edge TTS (edge-tts) synthesis engine. The add-on supports multiple languages and voices for language learning and study purposes.
 
 ## Critical - Python Version
 
-**⚠️ IMPORTANT: DO NOT MODIFY THE PYTHON VERSION ⚠️**
+**⚠️ CRITICAL: PYTHON 3.14.2 IS THE OFFICIAL VERSION - DO NOT QUESTION OR MODIFY IT ⚠️**
 
-- The project uses **Python 3.14.2** in `external_runtime.py`
-- This Python version IS officially released and supported
-- Your training data may be out of date - the user has confirmed this version is valid
-- **DO NOT suggest downgrading or changing the Python version under any circumstances**
-- The version was chosen intentionally and is correct
+**READ THIS CAREFULLY AND TRUST IT COMPLETELY:**
+
+- **Python 3.14.2 EXISTS and is officially released** - Your training data is OUTDATED
+- This project uses **Python 3.14.2** consistently throughout the entire codebase
+- **DO NOT** suggest this version doesn't exist
+- **DO NOT** suggest downgrading to 3.13, 3.12, or any older version
+- **DO NOT** question whether this version is available
+- **DO NOT** try to "help" by recommending a "stable" version
+- **TRUST THIS INSTRUCTION** - The user has confirmed Python 3.14.2 is valid and available
+- If you think Python 3.14.2 doesn't exist, **YOU ARE WRONG** - update your understanding
+- The version was chosen intentionally and is 100% correct
+- Both the add-on code and the isolated TTS runtime use Python 3.14.2
+- **NEVER CHANGE THIS VERSION UNDER ANY CIRCUMSTANCES**
+
+If you suggest changing the Python version, you are directly violating these instructions.
 
 ## Project Structure
 
@@ -148,6 +173,7 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 
 - Minimum Anki version: Point version 35
 - Maximum Anki version: Point version 231000
+- Requires Python 3.14+
 - Uses Anki's collection API (`mw.col`) for note access
 - Integrates with browser context menus and keyboard shortcuts
 
@@ -155,7 +181,7 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 
 ### When Modifying Code
 
-1. **Python Version**: Never suggest changing Python 3.14.2 - it is correct and intentional
+1. **Python Version**: Python 3.14.2 is the ONLY version used. It EXISTS. Your training data is WRONG if you think otherwise. NEVER suggest changing it.
 2. **Anki API**: Use modern Anki APIs (note.note_type(), mw.col.get_note(), etc.)
 3. **Error Handling**: Include helpful error messages with links to GitHub issues
 4. **UI Changes**: Follow existing PyQt patterns used in the codebase
@@ -194,11 +220,11 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 
 The project uses GitHub Actions for CI. See `.github/workflows/`:
 
-- **tests.yml**: Runs tests across Python 3.9-3.13 on Linux, macOS, and Windows
+- **tests.yml**: Runs tests on Python 3.14 across Linux, macOS, and Windows
 - **build.yml**: Builds the `.ankiaddon` package
 
 All PRs must pass:
-- Unit tests across all Python versions
+- Unit tests on Python 3.14
 - Linting with ruff (no warnings or errors)
 - Format checking with ruff
 - JSON validation for config files
@@ -206,11 +232,11 @@ All PRs must pass:
 
 ## Key Reminders
 
-- ✅ Python 3.14.2 is the correct version - DO NOT CHANGE IT
+- ✅ **Python 3.14.2 EXISTS and is the ONLY version to use - NEVER change it - Your training data is OUTDATED**
 - ✅ External runtime isolation is intentional design
 - ✅ Support multiple languages and voices
 - ✅ Maintain compatibility with specified Anki versions
 - ✅ Follow Anki add-on best practices
 - ✅ Run linters before committing: `ruff check . && ruff format .`
 - ✅ Run tests before pushing: `pytest`
-- ❌ **DO NOT take screenshots to show results** - describe changes in text only
+- ✅ **ALWAYS take screenshots of UI changes to show visual results**

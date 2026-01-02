@@ -48,7 +48,7 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
         if isinstance(result, Exception):
             raise RuntimeError("Failed to synthesize text in batch") from result
 
-    ordered_results = sorted(zip(identifiers, audio_results), key=lambda pair: pair[0])
+    ordered_results = sorted(zip(identifiers, audio_results, strict=True), key=lambda pair: pair[0])
     return [
         {"id": identifier, "audio": base64.b64encode(audio_bytes).decode("ascii")}
         for identifier, audio_bytes in ordered_results
