@@ -341,13 +341,78 @@ class MyDialog(qt.QDialog):
         if speaker is None:
             raise Exception("getSpeaker returned None in PreviewVoice")
 
-        preview_sentences = [
-            "こんにちは、これはテスト文章です。",
-            "ＤＶＤの再生ボタンを押して、書斎に向かった。",
-            "さてと 、 ご馳走様でした",
-            "真似しないでくれる？",
-            "な 、 なんだよ ？　 テンション高いな",
-        ]
+        # Language-specific preview sentences
+        preview_sentences_by_lang = {
+            "ja": [
+                "こんにちは、これはテスト文章です。",
+                "ＤＶＤの再生ボタンを押して、書斎に向かった。",
+                "さてと 、 ご馳走様でした",
+                "真似しないでくれる？",
+                "な 、 なんだよ ？　 テンション高いな",
+            ],
+            "en": [
+                "Hello, this is a test sentence.",
+                "The quick brown fox jumps over the lazy dog.",
+                "Thank you for using this add-on.",
+                "How are you doing today?",
+                "This is a preview of the selected voice.",
+            ],
+            "de": [
+                "Hallo, das ist ein Testsatz.",
+                "Wie geht es dir heute?",
+                "Vielen Dank für die Nutzung dieses Add-ons.",
+                "Der schnelle braune Fuchs springt über den faulen Hund.",
+                "Dies ist eine Vorschau der ausgewählten Stimme.",
+            ],
+            "zh": [
+                "你好，这是一个测试句子。",
+                "谢谢你使用这个插件。",
+                "今天天气怎么样？",
+                "快速的棕色狐狸跳过懒狗。",
+                "这是所选语音的预览。",
+            ],
+            "ko": [
+                "안녕하세요, 이것은 테스트 문장입니다.",
+                "이 애드온을 사용해 주셔서 감사합니다.",
+                "오늘 기분이 어떠세요?",
+                "빠른 갈색 여우가 게으른 개를 뛰어넘습니다.",
+                "선택한 음성의 미리보기입니다.",
+            ],
+            "fr": [
+                "Bonjour, ceci est une phrase de test.",
+                "Merci d'utiliser cette extension.",
+                "Comment allez-vous aujourd'hui?",
+                "Le rapide renard brun saute par-dessus le chien paresseux.",
+                "Ceci est un aperçu de la voix sélectionnée.",
+            ],
+            "es": [
+                "Hola, esta es una oración de prueba.",
+                "Gracias por usar este complemento.",
+                "¿Cómo estás hoy?",
+                "El rápido zorro marrón salta sobre el perro perezoso.",
+                "Esta es una vista previa de la voz seleccionada.",
+            ],
+            "pt": [
+                "Olá, esta é uma frase de teste.",
+                "Obrigado por usar este complemento.",
+                "Como você está hoje?",
+                "A rápida raposa marrom pula sobre o cão preguiçoso.",
+                "Esta é uma prévia da voz selecionada.",
+            ],
+            "it": [
+                "Ciao, questa è una frase di prova.",
+                "Grazie per aver utilizzato questo componente aggiuntivo.",
+                "Come stai oggi?",
+                "La veloce volpe marrone salta sopra il cane pigro.",
+                "Questa è un'anteprima della voce selezionata.",
+            ],
+        }
+
+        # Extract language code from voice name (e.g., "ja-JP-NanamiNeural" -> "ja")
+        lang_code = speaker.split("-")[0] if "-" in speaker else "en"
+        
+        # Get preview sentences for the language, fallback to English if not found
+        preview_sentences = preview_sentences_by_lang.get(lang_code, preview_sentences_by_lang["en"])
 
         tup = (random.choice(preview_sentences), speaker)
         result = GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
