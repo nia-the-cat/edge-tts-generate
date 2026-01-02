@@ -5,7 +5,7 @@ import urllib.request
 import zipfile
 from functools import lru_cache
 
-PYTHON_VERSION = "3.14.0"
+PYTHON_VERSION = "3.12.8"
 EMBED_URL = (
     f"https://www.python.org/ftp/python/{PYTHON_VERSION}/"
     f"python-{PYTHON_VERSION}-embed-amd64.zip"

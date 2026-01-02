@@ -31,7 +31,7 @@ def getCommonFields(selected_notes):
         note = mw.col.get_note(note_id)
         if note is None:
             raise Exception(
-                f"Note with id {note_id} is None.\nNotes: {','.join([mw.col.get_note(id) for id in selected_notes])}.\nPlease submit an issues with more information about what cards caused this at https://github.com/Toocanzs/anki-voicevox/issues/new"
+                f"Note with id {note_id} is None.\nNotes: {','.join([mw.col.get_note(id) for id in selected_notes])}.\nPlease submit an issue with more information about what cards caused this at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
             )
         model = note.note_type()
         model_fields = set([f["name"] for f in model["flds"]])
@@ -262,10 +262,10 @@ class MyDialog(qt.QDialog):
         result = GenerateAudioQuery(tup, mw.addonManager.getConfig(__name__))
 
         addon_path = dirname(__file__)
-        preivew_path = join(addon_path, "edge_tts_preview.mp3")
-        with open(preivew_path, "wb") as f:
+        preview_path = join(addon_path, "edge_tts_preview.mp3")
+        with open(preview_path, "wb") as f:
             f.write(result)
-        av_player.play_file(preivew_path)
+        av_player.play_file(preview_path)
 
 
 def GenerateAudioQuery(text_and_speaker_tuple, config):
