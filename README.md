@@ -1,3 +1,5 @@
+# MAJOR WIP, LIKELY DOES NOT WORK
+
 # EdgeTTS Audio Generator for Anki
 
 Generate high quality text-to-speech audio for your Anki cards using the edge-tts speech synthesis software. Supports multiple languages and voices.
