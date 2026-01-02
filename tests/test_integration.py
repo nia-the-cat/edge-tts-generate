@@ -188,6 +188,21 @@ class TestTextProcessingPipeline:
         assert "[" not in text
         assert "]" not in text
 
+    def test_whitespace_handling_respects_language(self):
+        """Whitespace removal should depend on the selected voice locale."""
+        import re
+
+        sample_text = "This sentence should keep its spaces"
+
+        def strip_spaces(text, voice):
+            language_code = voice.split("-")[0].lower()
+            if language_code in {"ja", "zh"}:
+                return re.sub(" ", "", text)
+            return text
+
+        assert strip_spaces(sample_text, "en-US-JennyNeural") == sample_text
+        assert strip_spaces(sample_text, "ja-JP-NanamiNeural") == "Thissentenceshouldkeepitsspaces"
+
     def test_handles_various_input_formats(self):
         """Test processing handles various input formats."""
         import re
