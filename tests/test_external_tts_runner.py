@@ -4,7 +4,10 @@ Note: These tests mock edge_tts to avoid network calls.
 """
 
 import argparse
+import asyncio
+import base64
 import importlib.util
+import json
 import os
 import sys
 import tempfile
@@ -19,26 +22,28 @@ _module_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 class TestArgumentParsing:
     """Test CLI argument parsing."""
 
-    def test_parser_requires_text_file(self):
-        """Parser should require --text-file argument."""
+    @staticmethod
+    def _build_parser():
         parser = argparse.ArgumentParser()
-        parser.add_argument("--text-file", required=True)
+        group = parser.add_mutually_exclusive_group(required=True)
+        group.add_argument("--text-file")
+        group.add_argument("--batch-file")
         parser.add_argument("--voice", required=True)
         parser.add_argument("--pitch", required=True)
         parser.add_argument("--rate", required=True)
         parser.add_argument("--volume", required=True)
+        return parser
+
+    def test_parser_requires_text_file(self):
+        """Parser should require either --text-file or --batch-file argument."""
+        parser = self._build_parser()
 
         with pytest.raises(SystemExit):
             parser.parse_args([])
 
     def test_parser_accepts_all_arguments(self):
-        """Parser should accept all required arguments."""
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--text-file", required=True)
-        parser.add_argument("--voice", required=True)
-        parser.add_argument("--pitch", required=True)
-        parser.add_argument("--rate", required=True)
-        parser.add_argument("--volume", required=True)
+        """Parser should accept all required arguments for single input."""
+        parser = self._build_parser()
 
         args = parser.parse_args(
             [
@@ -61,6 +66,28 @@ class TestArgumentParsing:
         assert args.rate == "+0%"
         assert args.volume == "+0%"
 
+    def test_parser_accepts_batch_arguments(self):
+        """Parser should accept batch input arguments."""
+        parser = self._build_parser()
+
+        args = parser.parse_args(
+            [
+                "--batch-file",
+                "/tmp/batch.json",
+                "--voice",
+                "ja-JP-NanamiNeural",
+                "--pitch",
+                "+0Hz",
+                "--rate",
+                "+0%",
+                "--volume",
+                "+0%",
+            ]
+        )
+
+        assert args.batch_file == "/tmp/batch.json"
+        assert args.voice == "ja-JP-NanamiNeural"
+
 
 def _load_external_tts_runner():
     """Load external_tts_runner module with mocked edge_tts."""
@@ -74,8 +101,7 @@ def _load_external_tts_runner():
 class TestSynthesizeFunction:
     """Test the synthesize async function."""
 
-    @pytest.mark.asyncio
-    async def test_synthesize_reads_text_file(self):
+    def test_synthesize_reads_text_file(self):
         """Synthesize should read text from the provided file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("Hello, world!")
@@ -104,14 +130,13 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts):
-                result = await external_tts_runner.synthesize(args)
+                result = asyncio.run(external_tts_runner.synthesize(args))
 
             assert result == b"audio_data_chunk_1audio_data_chunk_2"
         finally:
             os.unlink(text_file)
 
-    @pytest.mark.asyncio
-    async def test_synthesize_passes_voice_parameters(self):
+    def test_synthesize_passes_voice_parameters(self):
         """Synthesize should pass all voice parameters to edge_tts."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("Test text")
@@ -136,7 +161,7 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
-                await external_tts_runner.synthesize(args)
+                asyncio.run(external_tts_runner.synthesize(args))
 
                 mock_communicate.assert_called_once_with(
                     "Test text",
@@ -148,8 +173,7 @@ class TestSynthesizeFunction:
         finally:
             os.unlink(text_file)
 
-    @pytest.mark.asyncio
-    async def test_synthesize_handles_empty_file(self):
+    def test_synthesize_handles_empty_file(self):
         """Synthesize should handle empty text file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("")
@@ -176,14 +200,13 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts):
-                result = await external_tts_runner.synthesize(args)
+                result = asyncio.run(external_tts_runner.synthesize(args))
 
             assert result == b""
         finally:
             os.unlink(text_file)
 
-    @pytest.mark.asyncio
-    async def test_synthesize_handles_unicode_text(self):
+    def test_synthesize_handles_unicode_text(self):
         """Synthesize should handle Unicode text properly."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("こんにちは、世界！")
@@ -208,7 +231,7 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
-                result = await external_tts_runner.synthesize(args)
+                result = asyncio.run(external_tts_runner.synthesize(args))
 
                 # Verify the text was read correctly
                 mock_communicate.assert_called_once()
@@ -218,6 +241,39 @@ class TestSynthesizeFunction:
             assert result == b"japanese_audio"
         finally:
             os.unlink(text_file)
+
+    def test_synthesize_batch_encodes_audio(self):
+        """Synthesize batch should return base64-encoded audio per item."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump({"items": [{"id": "1", "text": "Hello"}, {"id": "2", "text": "World"}]}, f)
+            batch_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                batch_file=batch_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            external_tts_runner = _load_external_tts_runner()
+
+            async def fake_synthesize_text(text, _args):
+                return f"audio-{text}".encode("utf-8")
+
+            with patch.object(
+                external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text
+            ):
+                result = asyncio.run(external_tts_runner.synthesize_batch(args))
+
+            expected = [
+                {"id": "1", "audio": base64.b64encode(b"audio-Hello").decode("ascii")},
+                {"id": "2", "audio": base64.b64encode(b"audio-World").decode("ascii")},
+            ]
+            assert result == expected
+        finally:
+            os.unlink(batch_file)
 
 
 class TestMainFunction:
@@ -267,8 +323,7 @@ class TestMainFunction:
 class TestVoiceParameters:
     """Test handling of various voice parameter formats."""
 
-    @pytest.mark.asyncio
-    async def test_negative_pitch(self):
+    def test_negative_pitch(self):
         """Should handle negative pitch values."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("Test")
@@ -293,15 +348,14 @@ class TestVoiceParameters:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
-                await external_tts_runner.synthesize(args)
+                asyncio.run(external_tts_runner.synthesize(args))
 
                 call_kwargs = mock_communicate.call_args[1]
                 assert call_kwargs["pitch"] == "-20Hz"
         finally:
             os.unlink(text_file)
 
-    @pytest.mark.asyncio
-    async def test_extreme_rate(self):
+    def test_extreme_rate(self):
         """Should handle extreme rate values."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("Test")
@@ -326,7 +380,7 @@ class TestVoiceParameters:
             external_tts_runner = _load_external_tts_runner()
 
             with patch.object(external_tts_runner.edge_tts, "Communicate", return_value=mock_tts) as mock_communicate:
-                await external_tts_runner.synthesize(args)
+                asyncio.run(external_tts_runner.synthesize(args))
 
                 call_kwargs = mock_communicate.call_args[1]
                 assert call_kwargs["rate"] == "-50%"
