@@ -201,20 +201,79 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 ### Adding New Voices
 
 1. Update `config.json` with new speaker identifiers
-2. Ensure voice names match edge-tts supported voices
+2. Ensure voice names match edge-tts supported voices (format: `language-REGION-NameNeural`)
 3. Test voice preview functionality
+4. Verify the voice works with appropriate language text
+
+**Example:**
+```json
+{
+  "speakers": [
+    "en-US-JennyNeural",
+    "ja-JP-NanamiNeural",
+    "your-new-voice-here"
+  ]
+}
+```
 
 ### Modifying Audio Generation
 
 1. Changes to audio generation logic typically go in `edge_tts_gen.py`
 2. External script execution happens via `external_tts_runner.py`
 3. Remember the isolated Python runtime handles actual TTS generation
+4. Test with various text inputs (HTML, special characters, different languages)
+
+**Key Functions:**
+- `GenerateAudioBatch()` - Main batch processing logic
+- `GenerateAudioQuery()` - Single audio generation
+- `_getPreviewTextFromNote()` - Text preprocessing for preview
 
 ### UI Modifications
 
 1. Use Anki's Qt components from `aqt.qt`
 2. Follow existing patterns for dialogs and field selection
 3. Persist user preferences in `meta.json` via Anki's config system
+4. Test UI on different screen sizes and with different Anki themes
+
+**UI Components in AudioGenDialog:**
+- Field selection dropdowns (source/destination)
+- Audio handling radio buttons (append/overwrite/skip)
+- Voice selection combo box with preview
+- Bracket handling checkbox
+- Pitch/speed/volume sliders (in advanced mode)
+
+### Debugging
+
+**Common Issues:**
+- **Import errors**: Check `conftest.py` for proper Anki module mocking
+- **Path issues**: Use absolute paths when working with external runtime
+- **Subprocess failures**: Check `_get_subprocess_flags()` for platform-specific handling
+- **Audio not generating**: Enable verbose logging and check external_tts_runner output
+
+**Debugging Tools:**
+```bash
+# Run specific test with verbose output
+pytest tests/test_edge_tts_gen.py::TestClassName::test_method -v --tb=long
+
+# Run with coverage to find untested code
+pytest --cov=. --cov-report=html
+
+# Check subprocess flags behavior
+pytest tests/test_subprocess_flags.py -v
+```
+
+### Text Processing Pipeline
+
+The add-on processes text in this order:
+1. **HTML stripping** - Removes all HTML tags and entities
+2. **Bracket handling** - Optionally removes/extracts content in `[...]`
+3. **Whitespace normalization** - Language-specific (CJK vs non-CJK)
+4. **Encoding** - Ensures proper UTF-8 encoding for TTS engine
+
+**Functions involved:**
+- `re.sub(r"<[^>]+>", "", text)` - HTML tag removal
+- `re.sub(r"\[[^\]]*\]", "", text)` - Bracket removal
+- `text.strip()` or `re.sub(r"\s+", "", text)` - Whitespace handling
 
 ## CI/CD
 
@@ -229,6 +288,169 @@ All PRs must pass:
 - Format checking with ruff
 - JSON validation for config files
 - Integration tests
+
+### Release Process
+
+1. Update version numbers if needed (in relevant files)
+2. Ensure all tests pass locally and in CI
+3. Create a git tag: `git tag v1.x.x`
+4. Push tag: `git push origin v1.x.x`
+5. GitHub Actions automatically builds and creates a release with the `.ankiaddon` file
+
+## Architecture & Design Patterns
+
+### Isolated Runtime Design
+
+**Why**: Anki bundles its own Python version, and installing packages directly can cause conflicts.
+
+**Solution**: The add-on downloads a separate, embeddable Python 3.14.2 and installs edge-tts in isolation.
+
+**Components:**
+- `external_runtime.py` - Manages Python download, extraction, and pip installation
+- `external_tts_runner.py` - Standalone script that runs in the isolated environment
+- `edge_tts_gen.py` - Communicates with external runtime via subprocess
+
+**Data Flow:**
+```
+Anki (Python X.Y) → subprocess → Isolated Python 3.14.2 → edge-tts → Audio bytes → Anki
+```
+
+### Configuration Management
+
+**User Settings** (stored in `meta.json` via Anki's config system):
+- Last selected source/destination fields
+- Last selected speaker
+- Audio handling mode preference
+- Slider values (pitch, speed, volume)
+- Bracket handling preference
+
+**Voice List** (stored in `config.json`):
+- Default speaker identifiers
+- Users can customize via Anki's config editor
+
+### Error Handling Strategy
+
+**User-Facing Errors:**
+- Use `QMessageBox.critical()` for blocking errors that prevent operation
+- Use `QMessageBox.warning()` for non-blocking issues
+- Include actionable guidance in error messages
+
+**Developer Errors:**
+- Raise exceptions with clear messages
+- Chain exceptions using `from exc` to preserve stack traces
+- Log to Anki's console for debugging
+
+**Examples:**
+```python
+# Good - Clear, actionable error
+QMessageBox.critical(
+    mw,
+    "Error",
+    "The chosen notes share no fields in common. Make sure you're not selecting two different note types",
+)
+
+# Good - Chained exception
+except Exception as exc:
+    raise RuntimeError("Failed to synthesize text in batch") from exc
+```
+
+## Testing Strategy
+
+### Test Organization
+
+- `tests/test_edge_tts_gen.py` - UI dialog and main logic
+- `tests/test_external_runtime.py` - Python runtime bootstrap logic
+- `tests/test_external_tts_runner.py` - External script and TTS generation
+- `tests/test_integration.py` - End-to-end integration tests
+- `tests/test_preview_voice_async.py` - Voice preview async behavior
+- `tests/test_subprocess_flags.py` - Platform-specific subprocess handling
+
+### Mocking Strategy
+
+**Anki Modules** (via `conftest.py`):
+- Mock `aqt`, `anki`, and Anki's Qt components
+- Provide fake implementations for testing without Anki
+
+**External Services:**
+- Mock subprocess calls to avoid actual TTS generation in tests
+- Mock file I/O for runtime bootstrap tests
+- Use fixtures for consistent test data
+
+### Test Coverage Goals
+
+- Aim for high coverage on business logic (>80%)
+- UI code may have lower coverage (harder to test)
+- All critical paths must be covered (audio generation, error handling)
+
+## Security Considerations
+
+### Subprocess Execution
+
+**Risk**: Running external Python executable with user input
+
+**Mitigation:**
+- Input is written to temporary files, not passed as command-line arguments
+- File paths are validated and sanitized
+- Subprocess output is captured and parsed safely
+- Use `CREATE_NO_WINDOW` flag on Windows to prevent console windows
+
+### User Data
+
+**What we handle:**
+- Note field content (text to synthesize)
+- User preferences (field names, speaker choices)
+- Audio files (generated and stored in Anki collection)
+
+**Privacy:**
+- No data sent to external servers except via edge-tts library (Microsoft's service)
+- All data stays within Anki collection
+- No telemetry or analytics
+
+### Dependency Management
+
+- Pin exact versions in `EDGE_TTS_SPEC` to ensure reproducibility
+- Update dependencies carefully and test thoroughly
+- Monitor for security advisories on edge-tts library
+
+## Performance Optimization
+
+### Caching
+
+- `@lru_cache` on `get_external_python()` - Reuses runtime path
+- Downloaded Python is cached in add-on directory
+- Edge-tts library is installed once and reused
+
+### Batch Processing
+
+- Process multiple notes in a single subprocess invocation
+- Reduces overhead from repeated Python interpreter startup
+- Uses JSON for efficient data transfer between processes
+
+### UI Responsiveness
+
+- Voice preview runs asynchronously using `QThreadPool` and `QRunnable`
+- Preview button disabled during generation to prevent multiple concurrent requests
+- Audio generation shows progress (though currently synchronous)
+
+## Troubleshooting Guide for Developers
+
+### Common Development Issues
+
+**Tests fail with import errors:**
+- Check that `conftest.py` is in the `tests/` directory
+- Verify mock implementations match actual Anki API
+
+**Linting fails on ruff B905:**
+- Use `strict=True` for zip() calls: `zip(a, b, strict=True)`
+
+**Subprocess tests fail on Windows:**
+- Check `_get_subprocess_flags()` implementation
+- Verify `CREATE_NO_WINDOW` flag is set correctly
+
+**Runtime download fails in development:**
+- Check internet connection
+- Verify URL in `EMBED_URL` is accessible
+- Test download manually: `curl -O <URL>`
 
 ## Key Reminders
 
