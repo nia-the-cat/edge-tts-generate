@@ -5,13 +5,13 @@ import urllib.request
 import zipfile
 from functools import lru_cache
 
-PYTHON_VERSION = "3.14.0"
+PYTHON_VERSION = "3.13.1"
 EMBED_URL = (
     f"https://www.python.org/ftp/python/{PYTHON_VERSION}/"
     f"python-{PYTHON_VERSION}-embed-amd64.zip"
 )
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
-EDGE_TTS_SPEC = "edge-tts==6.1.9"
+EDGE_TTS_SPEC = "edge-tts==7.2.7"
 
 
 def _download(url: str, destination: str) -> None:
