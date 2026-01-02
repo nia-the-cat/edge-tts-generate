@@ -6,7 +6,7 @@ import edge_tts
 
 
 async def synthesize(args: argparse.Namespace) -> bytes:
-    with open(args.text_file, encoding="utf-8") as handle:
+    with open(args.text_file, "r", encoding="utf-8") as handle:
         text = handle.read()
 
     tts = edge_tts.Communicate(

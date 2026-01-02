@@ -442,11 +442,16 @@ class MyDialog(qt.QDialog):
 
             try:
                 result = future.result()
-                addon_path = dirname(__file__)
-                preview_path = join(addon_path, "edge_tts_preview.mp3")
-                with open(preview_path, "wb") as f:
-                    f.write(result)
-                av_player.play_file(preview_path)
+                
+                def play_preview():
+                    """Write file and play audio on main thread"""
+                    addon_path = dirname(__file__)
+                    preview_path = join(addon_path, "edge_tts_preview.mp3")
+                    with open(preview_path, "wb") as f:
+                        f.write(result)
+                    av_player.play_file(preview_path)
+                
+                mw.taskman.run_on_main(play_preview)
             except Exception as exc:
                 error_msg = str(exc)
                 mw.taskman.run_on_main(
