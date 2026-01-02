@@ -6,6 +6,9 @@ from aqt.qt import (
     QApplication,
     QMessageBox,
     QSlider,
+    QInputDialog,
+    QButtonGroup,
+    QRadioButton,
 )
 from aqt import browser, gui_hooks, qt
 from aqt import mw
@@ -20,6 +23,8 @@ import re
 import traceback
 
 from .external_runtime import get_external_python
+
+CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
 
 
 def getCommonFields(selected_notes):
@@ -59,7 +64,9 @@ def getSpeaker(speaker_combo):
 class MyDialog(qt.QDialog):
     def __init__(self, browser, parent=None) -> None:
         super().__init__(parent)
+        self.browser = browser
         self.selected_notes = browser.selectedNotes()
+        self.new_field_name = None  # Track if user wants to create a new field
 
         config = mw.addonManager.getConfig(__name__)
 
@@ -69,19 +76,13 @@ class MyDialog(qt.QDialog):
 
         self.grid_layout = qt.QGridLayout()
 
-        common_fields = getCommonFields(self.selected_notes)
+        self.common_fields = getCommonFields(self.selected_notes)
 
-        if len(common_fields) < 1:
+        if len(self.common_fields) < 1:
             QMessageBox.critical(
                 mw,
                 "Error",
                 f"The chosen notes share no fields in common. Make sure you're not selecting two different note types",
-            )
-        elif len(common_fields) == 1:
-            QMessageBox.critical(
-                mw,
-                "Error",
-                f"The chosen notes only share a single field in common '{list(common_fields)[0]}'. This would leave no field to put the generated audio without overwriting the sentence data",
             )
 
         self.source_combo = qt.QComboBox()
@@ -92,7 +93,7 @@ class MyDialog(qt.QDialog):
         source_field_index = 0
         destination_field_index = 0
         i = 0
-        for field in common_fields:
+        for field in self.common_fields:
             if last_source_field is None:
                 if "expression" == field.lower() or "sentence" == field.lower():
                     source_field_index = i
@@ -108,6 +109,10 @@ class MyDialog(qt.QDialog):
             self.destination_combo.addItem(field)
             i += 1
 
+        # Add "Create new field" option to destination dropdown
+        self.destination_combo.addItem(CREATE_NEW_FIELD_OPTION)
+        self.destination_combo.currentIndexChanged.connect(self.onDestinationChanged)
+
         self.source_combo.setCurrentIndex(source_field_index)
         self.destination_combo.setCurrentIndex(destination_field_index)
 
@@ -116,7 +121,7 @@ class MyDialog(qt.QDialog):
         source_label.setToolTip(source_tooltip)
 
         destination_label = qt.QLabel("Destination field: ")
-        destination_tooltip = "The field to write the audio to. Typically you want to choose a field like 'Audio' or 'Audio on Front' or wherever you want the audio placed on your card."
+        destination_tooltip = "The field to write the audio to. Typically you want to choose a field like 'Audio' or 'Audio on Front' or wherever you want the audio placed on your card. Select '[ + Create new field... ]' to add a new audio field."
         destination_label.setToolTip(destination_tooltip)
 
         self.source_combo.setToolTip(source_tooltip)
@@ -127,6 +132,42 @@ class MyDialog(qt.QDialog):
         self.grid_layout.addWidget(destination_label, 0, 2)
         self.grid_layout.addWidget(self.destination_combo, 0, 3)
 
+        # Audio handling options (radio buttons)
+        audio_options_label = qt.QLabel("When destination field has content:")
+        audio_options_label.setToolTip("Choose how to handle existing content in the destination field")
+        self.grid_layout.addWidget(audio_options_label, 1, 0, 1, 2)
+
+        self.audio_handling_group = QButtonGroup(self)
+        
+        self.append_radio = QRadioButton("Append (keep existing content)")
+        self.append_radio.setToolTip("Add the generated audio to the field without removing any existing content. This is the safest option.")
+        
+        self.overwrite_radio = QRadioButton("Overwrite (replace content)")
+        self.overwrite_radio.setToolTip("Replace the entire content of the destination field with the new audio")
+        
+        self.skip_radio = QRadioButton("Skip (if audio exists)")
+        self.skip_radio.setToolTip("Skip generating audio for notes that already have content in the destination field")
+
+        self.audio_handling_group.addButton(self.append_radio, 0)
+        self.audio_handling_group.addButton(self.overwrite_radio, 1)
+        self.audio_handling_group.addButton(self.skip_radio, 2)
+
+        # Load saved preference or default to append (safest option)
+        last_audio_handling = config.get("last_audio_handling", "append")
+        if last_audio_handling == "overwrite":
+            self.overwrite_radio.setChecked(True)
+        elif last_audio_handling == "skip":
+            self.skip_radio.setChecked(True)
+        else:
+            self.append_radio.setChecked(True)  # Default to append
+
+        audio_options_layout = qt.QHBoxLayout()
+        audio_options_layout.addWidget(self.append_radio)
+        audio_options_layout.addWidget(self.overwrite_radio)
+        audio_options_layout.addWidget(self.skip_radio)
+        
+        self.grid_layout.addLayout(audio_options_layout, 1, 2, 1, 3)
+
         # TODO: Does anyone actually want to not ignore stuff in brackets? The checkbox is here if we need it but I don't think anyone wants brackets to be read
         self.ignore_brackets_checkbox = qt.QCheckBox("Ignore stuff in brackets [...]")
         self.ignore_brackets_checkbox.setToolTip(
@@ -135,12 +176,12 @@ class MyDialog(qt.QDialog):
         self.ignore_brackets_checkbox.setChecked(True)
         # self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
 
-        self.grid_layout.addWidget(qt.QLabel("Speaker: "), 1, 0)
+        self.grid_layout.addWidget(qt.QLabel("Speaker: "), 2, 0)
         self.speakers = getSpeakerList(config)
         self.speaker_combo = qt.QComboBox()
         for speaker in self.speakers:
             self.speaker_combo.addItem(speaker)
-        self.grid_layout.addWidget(self.speaker_combo, 1, 1)
+        self.grid_layout.addWidget(self.speaker_combo, 2, 1)
 
         last_speaker_name = config.get("last_speaker_name") or None
 
@@ -160,7 +201,7 @@ class MyDialog(qt.QDialog):
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
-        self.grid_layout.addWidget(self.preview_voice_button, 1, 4)
+        self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
 
         self.cancel_button = qt.QPushButton("Cancel")
         self.generate_button = qt.QPushButton("Generate Audio")
@@ -168,8 +209,8 @@ class MyDialog(qt.QDialog):
         self.cancel_button.clicked.connect(self.reject)
         self.generate_button.clicked.connect(self.pre_accept)
 
-        self.grid_layout.addWidget(self.cancel_button, 2, 0, 1, 2)
-        self.grid_layout.addWidget(self.generate_button, 2, 3, 1, 2)
+        self.grid_layout.addWidget(self.cancel_button, 3, 0, 1, 2)
+        self.grid_layout.addWidget(self.generate_button, 3, 3, 1, 2)
 
         def update_slider(slider, label, config_name, slider_desc, slider_unit):
             def update_this_slider(value):
@@ -192,8 +233,8 @@ class MyDialog(qt.QDialog):
             )
         )
 
-        self.grid_layout.addWidget(volume_label, 3, 0, 1, 2)
-        self.grid_layout.addWidget(volume_slider, 3, 3, 1, 2)
+        self.grid_layout.addWidget(volume_label, 4, 0, 1, 2)
+        self.grid_layout.addWidget(volume_slider, 4, 3, 1, 2)
 
         pitch_slider = QSlider(qt.Qt.Orientation.Horizontal)
         pitch_slider.setMinimum(-50)
@@ -208,8 +249,8 @@ class MyDialog(qt.QDialog):
             )
         )
 
-        self.grid_layout.addWidget(pitch_label, 4, 0, 1, 2)
-        self.grid_layout.addWidget(pitch_slider, 4, 3, 1, 2)
+        self.grid_layout.addWidget(pitch_label, 5, 0, 1, 2)
+        self.grid_layout.addWidget(pitch_slider, 5, 3, 1, 2)
 
         speed_slider = QSlider(qt.Qt.Orientation.Horizontal)
         speed_slider.setMinimum(-50)
@@ -224,19 +265,60 @@ class MyDialog(qt.QDialog):
             )
         )
 
-        self.grid_layout.addWidget(speed_label, 5, 0, 1, 2)
-        self.grid_layout.addWidget(speed_slider, 5, 3, 1, 2)
+        self.grid_layout.addWidget(speed_label, 6, 0, 1, 2)
+        self.grid_layout.addWidget(speed_slider, 6, 3, 1, 2)
 
         layout.addLayout(self.grid_layout)
 
         self.setLayout(layout)
 
-    def pre_accept(self):
-        if self.source_combo.currentIndex() == self.destination_combo.currentIndex():
-            source_text = self.source_combo.itemText(self.source_combo.currentIndex())
-            destination_text = self.destination_combo.itemText(
-                self.destination_combo.currentIndex()
+    def onDestinationChanged(self, index):
+        """Handle destination field dropdown change - prompt for new field name if 'Create new field' is selected"""
+        if self.destination_combo.itemText(index) == CREATE_NEW_FIELD_OPTION:
+            field_name, ok = QInputDialog.getText(
+                self,
+                "Create New Field",
+                "Enter the name for the new audio field:",
+                text="Audio"
             )
+            if ok and field_name.strip():
+                field_name = field_name.strip()
+                # Check if field already exists
+                if field_name in self.common_fields:
+                    QMessageBox.warning(
+                        self,
+                        "Field Exists",
+                        f"A field named '{field_name}' already exists. Please select it from the dropdown or choose a different name."
+                    )
+                    # Reset to first item
+                    self.destination_combo.setCurrentIndex(0)
+                else:
+                    self.new_field_name = field_name
+                    # Insert the new field name before the "Create new field" option
+                    insert_index = self.destination_combo.count() - 1
+                    self.destination_combo.insertItem(insert_index, field_name)
+                    self.destination_combo.setCurrentIndex(insert_index)
+            else:
+                # User cancelled, reset to first item
+                self.destination_combo.setCurrentIndex(0)
+
+    def pre_accept(self):
+        destination_text = self.destination_combo.itemText(
+            self.destination_combo.currentIndex()
+        )
+        source_text = self.source_combo.itemText(self.source_combo.currentIndex())
+        
+        # Don't allow selecting "Create new field" option directly without entering a name
+        if destination_text == CREATE_NEW_FIELD_OPTION:
+            QMessageBox.critical(
+                mw,
+                "Error",
+                "Please select an existing field or create a new one by selecting '[ + Create new field... ]' and entering a name.",
+            )
+            return
+        
+        # Check if source and destination are the same (only if destination is not a new field)
+        if self.new_field_name is None and self.source_combo.currentIndex() == self.destination_combo.currentIndex():
             QMessageBox.critical(
                 mw,
                 "Error",
@@ -244,6 +326,15 @@ class MyDialog(qt.QDialog):
             )
         else:
             self.accept()
+
+    def getAudioHandlingMode(self):
+        """Returns the selected audio handling mode: 'append', 'overwrite', or 'skip'"""
+        if self.overwrite_radio.isChecked():
+            return "overwrite"
+        elif self.skip_radio.isChecked():
+            return "skip"
+        else:
+            return "append"
 
     def PreviewVoice(self):
         speaker = getSpeaker(self.speaker_combo)
@@ -325,6 +416,25 @@ def GenerateAudioQuery(text_and_speaker_tuple, config):
     return result.stdout
 
 
+def addFieldToNoteTypes(field_name, selected_notes):
+    """Add a new field to all note types used by the selected notes"""
+    note_types_updated = set()
+    for note_id in selected_notes:
+        note = mw.col.get_note(note_id)
+        model = note.note_type()
+        model_id = model["id"]
+        
+        if model_id not in note_types_updated:
+            # Check if field already exists in this note type
+            existing_fields = [f["name"] for f in model["flds"]]
+            if field_name not in existing_fields:
+                # Add the new field
+                new_field = mw.col.models.new_field(field_name)
+                mw.col.models.add_field(model, new_field)
+                mw.col.models.save(model)
+                note_types_updated.add(model_id)
+
+
 def onEdgeTTSOptionSelected(browser):
     dialog = MyDialog(browser)
     if dialog.exec():
@@ -336,6 +446,12 @@ def onEdgeTTSOptionSelected(browser):
         destination_field = dialog.destination_combo.itemText(
             dialog.destination_combo.currentIndex()
         )
+        
+        # Get the audio handling mode
+        audio_handling_mode = dialog.getAudioHandlingMode()
+        
+        # Check if we need to create a new field
+        new_field_name = dialog.new_field_name
 
         speaker_combo_text = dialog.speaker_combo.itemText(
             dialog.speaker_combo.currentIndex()
@@ -346,7 +462,13 @@ def onEdgeTTSOptionSelected(browser):
         config["last_source_field"] = source_field
         config["last_destination_field"] = destination_field
         config["last_speaker_name"] = speaker_combo_text
+        config["last_audio_handling"] = audio_handling_mode
         mw.addonManager.writeConfig(__name__, config)
+        
+        # Create the new field if needed
+        if new_field_name:
+            addFieldToNoteTypes(new_field_name, dialog.selected_notes)
+            destination_field = new_field_name
 
         def getNoteTextAndSpeaker(note_id):
             note = mw.col.get_note(note_id)
@@ -370,10 +492,13 @@ def onEdgeTTSOptionSelected(browser):
 
             return (note_text, speaker)
 
-        def updateProgress(notes_so_far, total_notes, bottom_text=""):
+        def updateProgress(notes_so_far, total_notes, skipped_count=0):
+            label = f"{notes_so_far}/{total_notes} generated"
+            if skipped_count > 0:
+                label += f" ({skipped_count} skipped)"
             mw.taskman.run_on_main(
                 lambda: mw.progress.update(
-                    label=f"{notes_so_far}/{total_notes} generated",
+                    label=label,
                     value=notes_so_far,
                     max=total_notes,
                 )
@@ -395,9 +520,24 @@ def onEdgeTTSOptionSelected(browser):
                 )
             )
             notes_so_far = 0
+            skipped_count = 0
             for note_id in notes:
                 notes_so_far += 1
-                updateProgress(notes_so_far, total_notes)
+                
+                note = mw.col.get_note(note_id)
+                # Check if destination field exists in note, get existing content
+                try:
+                    existing_content = note[destination_field].strip()
+                except KeyError:
+                    existing_content = ""
+                
+                # Handle skip mode: skip if destination field already has content
+                if audio_handling_mode == "skip" and existing_content:
+                    skipped_count += 1
+                    updateProgress(notes_so_far, total_notes, skipped_count)
+                    continue
+                
+                updateProgress(notes_so_far, total_notes, skipped_count)
 
                 note_text_and_speaker = getNoteTextAndSpeaker(note_id)
 
@@ -416,7 +556,15 @@ def onEdgeTTSOptionSelected(browser):
 
                 audio_field_text = f"[sound:{filename}]"
                 note = mw.col.get_note(note_id)
-                note[destination_field] = audio_field_text
+                
+                # Handle audio placement based on mode
+                if audio_handling_mode == "append" and existing_content:
+                    # Append: keep existing content and add new audio (no space needed for sound tags)
+                    note[destination_field] = existing_content + " " + audio_field_text
+                else:
+                    # Overwrite: replace content entirely (also used for empty fields)
+                    note[destination_field] = audio_field_text
+                    
                 mw.col.update_note(note)
                 if mw.progress.want_cancel():
                     break
