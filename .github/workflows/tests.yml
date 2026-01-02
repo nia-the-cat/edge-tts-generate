@@ -1,0 +1,154 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: Run tests with pytest
+        run: |
+          pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        with:
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run ruff linter on tests
+        run: |
+          ruff check tests/ --output-format=github
+
+      - name: Run ruff linter on source (advisory)
+        run: |
+          ruff check . --exclude=tests --output-format=github || echo "Note: Source linting issues found but not blocking CI"
+        continue-on-error: true
+
+      - name: Run ruff formatter check
+        run: |
+          ruff format --check tests/
+        continue-on-error: true  # Formatting is advisory for now
+
+  json-validation:
+    name: Validate JSON files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          echo "Validating config.json..."
+          python -m json.tool config.json > /dev/null
+          echo "✓ config.json is valid"
+          
+          echo "Validating manifest.json..."
+          python -m json.tool manifest.json > /dev/null
+          echo "✓ manifest.json is valid"
+          
+          echo "Validating meta.json..."
+          python -m json.tool meta.json > /dev/null
+          echo "✓ meta.json is valid"
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+
+      - name: Run integration tests
+        run: |
+          pytest tests/test_integration.py -v --tb=short
+
+  all-tests-passed:
+    name: All Tests Passed
+    needs: [test, lint, json-validation, integration]
+    runs-on: ubuntu-latest
+    permissions: {}
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "Tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.lint.result }}" != "success" ]]; then
+            echo "Linting failed"
+            exit 1
+          fi
+          if [[ "${{ needs.json-validation.result }}" != "success" ]]; then
+            echo "JSON validation failed"
+            exit 1
+          fi
+          if [[ "${{ needs.integration.result }}" != "success" ]]; then
+            echo "Integration tests failed"
+            exit 1
+          fi
+          echo "All checks passed!"
