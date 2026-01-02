@@ -227,7 +227,7 @@ class MyDialog(qt.QDialog):
 
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
         self.preview_voice_button.setToolTip(
-            "Preview the selected voice with a sample sentence. First preview may take a few seconds to initialize the speech engine."
+            "Preview the selected voice using text from the selected note's source field. First preview may take a few seconds to initialize the speech engine."
         )
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
