@@ -6,6 +6,14 @@ Generate high quality Japanese audio for your Anki cards using the edge-tts spee
 
 This is a text to speech addon for Anki that makes use of the edge-tts synthesis engine to generate audio for Japanese Anki cards.
 
+# Installation
+
+1. Download the latest release from the [Releases page](https://github.com/nia-the-cat/edge-tts-generate/releases)
+2. Unzip the downloaded file if necessary
+3. In Anki, go to `Tools` → `Add-ons` → `Install from file...`
+4. Select the `.ankiaddon` file and click Open
+5. Restart Anki to activate the add-on
+
 # Setup
 
 The add-on now bootstraps its own isolated Python 3.14 runtime when it first generates audio. No manual virtual environment creation or `pip install` steps are required. On first use the add-on will download the official embeddable Python package, install `edge-tts` inside it, and reuse that runtime for future sessions.
