@@ -24,6 +24,7 @@ from .external_runtime import get_external_python
 
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
+PREVIEW_NOTE_SNIPPET_MAX_LENGTH = 50  # Maximum length for note snippet in preview dropdown
 TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
 ENTITY_RE = re.compile(r"(&[^;]+;)")
 BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
@@ -225,13 +226,33 @@ class MyDialog(qt.QDialog):
             )
             self.speaker_status_label.setStyleSheet("color: #cc3300;")
 
+        # Preview note selection dropdown
+        if len(self.selected_notes) > 1:
+            self.grid_layout.addWidget(qt.QLabel("Preview from note: "), 3, 0)
+            self.preview_note_combo = qt.QComboBox()
+            self.preview_note_combo.setToolTip(
+                "Select which note to use for voice preview. Shows a snippet of each note's source field."
+            )
+
+            # Populate the dropdown with note snippets
+            self._populatePreviewNoteCombo()
+
+            # Connect to update when source field changes
+            self.source_combo.currentIndexChanged.connect(self._populatePreviewNoteCombo)
+
+            self.grid_layout.addWidget(self.preview_note_combo, 3, 1, 1, 2)
+
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
         self.preview_voice_button.setToolTip(
             "Preview the selected voice using text from the selected note's source field. First preview may take a few seconds to initialize the speech engine."
         )
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
-        self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
+        self.grid_layout.addWidget(
+            self.preview_voice_button,
+            3 if len(self.selected_notes) <= 1 else 4,
+            4 if len(self.selected_notes) <= 1 else 0,
+        )
 
         self.cancel_button = qt.QPushButton("Cancel")
         self.generate_button = qt.QPushButton("Generate Audio")
@@ -239,8 +260,10 @@ class MyDialog(qt.QDialog):
         self.cancel_button.clicked.connect(self.reject)
         self.generate_button.clicked.connect(self.pre_accept)
 
-        self.grid_layout.addWidget(self.cancel_button, 3, 0, 1, 2)
-        self.grid_layout.addWidget(self.generate_button, 3, 3, 1, 2)
+        # Position buttons on the appropriate row based on whether preview note selector is shown
+        button_row = 3 if len(self.selected_notes) <= 1 else 5
+        self.grid_layout.addWidget(self.cancel_button, button_row, 0, 1, 2)
+        self.grid_layout.addWidget(self.generate_button, button_row, 3, 1, 2)
 
         if self.speaker_combo.count() == 0:
             self.preview_voice_button.setEnabled(False)
@@ -256,6 +279,9 @@ class MyDialog(qt.QDialog):
 
             return update_this_slider
 
+        # Calculate base row for sliders based on whether preview note selector is shown
+        slider_base_row = 4 if len(self.selected_notes) <= 1 else 6
+
         volume_slider = QSlider(qt.Qt.Orientation.Horizontal)
         volume_slider.setMinimum(-100)
         volume_slider.setMaximum(100)
@@ -267,8 +293,8 @@ class MyDialog(qt.QDialog):
             update_slider(volume_slider, volume_label, "volume_slider_value", "Volume scale", "%")
         )
 
-        self.grid_layout.addWidget(volume_label, 4, 0, 1, 2)
-        self.grid_layout.addWidget(volume_slider, 4, 3, 1, 2)
+        self.grid_layout.addWidget(volume_label, slider_base_row, 0, 1, 2)
+        self.grid_layout.addWidget(volume_slider, slider_base_row, 3, 1, 2)
 
         pitch_slider = QSlider(qt.Qt.Orientation.Horizontal)
         pitch_slider.setMinimum(-50)
@@ -281,8 +307,8 @@ class MyDialog(qt.QDialog):
             update_slider(pitch_slider, pitch_label, "pitch_slider_value", "Pitch scale", "Hz")
         )
 
-        self.grid_layout.addWidget(pitch_label, 5, 0, 1, 2)
-        self.grid_layout.addWidget(pitch_slider, 5, 3, 1, 2)
+        self.grid_layout.addWidget(pitch_label, slider_base_row + 1, 0, 1, 2)
+        self.grid_layout.addWidget(pitch_slider, slider_base_row + 1, 3, 1, 2)
 
         speed_slider = QSlider(qt.Qt.Orientation.Horizontal)
         speed_slider.setMinimum(-50)
@@ -295,8 +321,8 @@ class MyDialog(qt.QDialog):
             update_slider(speed_slider, speed_label, "speed_slider_value", "Rate scale", "%")
         )
 
-        self.grid_layout.addWidget(speed_label, 6, 0, 1, 2)
-        self.grid_layout.addWidget(speed_slider, 6, 3, 1, 2)
+        self.grid_layout.addWidget(speed_label, slider_base_row + 2, 0, 1, 2)
+        self.grid_layout.addWidget(speed_slider, slider_base_row + 2, 3, 1, 2)
 
         layout.addLayout(self.grid_layout)
 
@@ -370,13 +396,64 @@ class MyDialog(qt.QDialog):
         else:
             return "append"
 
+    def _populatePreviewNoteCombo(self):
+        """Populate the preview note combo box with snippets from each selected note."""
+        if len(self.selected_notes) <= 1:
+            return  # No combo box for single note
+
+        # Get current source field
+        source_field = self.source_combo.itemText(self.source_combo.currentIndex())
+
+        # Remember the current selection before clearing
+        current_index = 0
+        if hasattr(self, "preview_note_combo") and self.preview_note_combo.count() > 0:
+            current_index = self.preview_note_combo.currentIndex()
+
+        # Clear and repopulate
+        self.preview_note_combo.clear()
+
+        for i, note_id in enumerate(self.selected_notes):
+            note = mw.col.get_note(note_id)
+            if note is None:
+                self.preview_note_combo.addItem(f"Note {i + 1} (ID: {note_id})")
+                continue
+
+            try:
+                note_text = note[source_field]
+                # Clean the text to show a snippet
+                note_text = ENTITY_RE.sub("", note_text)
+                note_text = TAG_RE.sub("", note_text)
+                note_text = note_text.strip()
+
+                # Create a short snippet using the configured max length
+                if note_text:
+                    snippet = note_text[:PREVIEW_NOTE_SNIPPET_MAX_LENGTH]
+                    if len(note_text) > PREVIEW_NOTE_SNIPPET_MAX_LENGTH:
+                        snippet += "..."
+                    self.preview_note_combo.addItem(f"Note {i + 1}: {snippet}")
+                else:
+                    self.preview_note_combo.addItem(f"Note {i + 1}: (empty)")
+            except KeyError:
+                self.preview_note_combo.addItem(f"Note {i + 1}: (no '{source_field}' field)")
+
+        # Restore previous selection if valid
+        if current_index < self.preview_note_combo.count():
+            self.preview_note_combo.setCurrentIndex(current_index)
+
     def _getPreviewTextFromNote(self, source_field, speaker):
-        """Get text from the first selected note's source field for preview."""
+        """Get text from the selected note's source field for preview."""
         if not self.selected_notes:
             return None
 
-        # Get the first note
-        note_id = self.selected_notes[0]
+        # Get the selected note index from combo box (if multiple notes)
+        note_index = 0
+        if len(self.selected_notes) > 1 and hasattr(self, "preview_note_combo"):
+            note_index = self.preview_note_combo.currentIndex()
+            # Ensure index is valid
+            if note_index < 0 or note_index >= len(self.selected_notes):
+                note_index = 0
+
+        note_id = self.selected_notes[note_index]
         note = mw.col.get_note(note_id)
         if note is None:
             return None
