@@ -24,6 +24,7 @@ from .external_runtime import get_external_python
 
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
+PREVIEW_NOTE_SNIPPET_MAX_LENGTH = 50  # Maximum length for note snippet in preview dropdown
 TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
 ENTITY_RE = re.compile(r"(&[^;]+;)")
 BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
@@ -424,10 +425,10 @@ class MyDialog(qt.QDialog):
                 note_text = TAG_RE.sub("", note_text)
                 note_text = note_text.strip()
 
-                # Create a short snippet (max 50 chars)
+                # Create a short snippet using the configured max length
                 if note_text:
-                    snippet = note_text[:50]
-                    if len(note_text) > 50:
+                    snippet = note_text[:PREVIEW_NOTE_SNIPPET_MAX_LENGTH]
+                    if len(note_text) > PREVIEW_NOTE_SNIPPET_MAX_LENGTH:
                         snippet += "..."
                     self.preview_note_combo.addItem(f"Note {i + 1}: {snippet}")
                 else:
