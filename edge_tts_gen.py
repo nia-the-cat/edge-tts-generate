@@ -96,6 +96,8 @@ class MyDialog(qt.QDialog):
                 "Error",
                 "The chosen notes share no fields in common. Make sure you're not selecting two different note types",
             )
+            self.reject()
+            return
 
         self.source_combo = qt.QComboBox()
         self.destination_combo = qt.QComboBox()
@@ -322,6 +324,15 @@ class MyDialog(qt.QDialog):
             self.destination_combo.currentIndex()
         )
         source_text = self.source_combo.itemText(self.source_combo.currentIndex())
+
+        if len(self.common_fields) < 1:
+            QMessageBox.critical(
+                mw,
+                "Error",
+                "No common fields were found between the selected notes. Please pick notes that share compatible types before generating audio.",
+            )
+            self.reject()
+            return
 
         # Don't allow selecting "Create new field" option directly without entering a name
         if destination_text == CREATE_NEW_FIELD_OPTION:
