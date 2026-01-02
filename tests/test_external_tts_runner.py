@@ -225,7 +225,7 @@ class TestSynthesizeFunction:
             mock_tts = MagicMock()
 
             async def mock_stream():
-                yield {"type": "audio", "data": b"japanese_audio"}
+                yield {"type": "audio", "data": b"test_audio"}
 
             mock_tts.stream = mock_stream
 
@@ -239,7 +239,7 @@ class TestSynthesizeFunction:
                 call_args = mock_communicate.call_args[0]
                 assert call_args[0] == "こんにちは、世界！"
 
-            assert result == b"japanese_audio"
+            assert result == b"test_audio"
         finally:
             os.unlink(text_file)
 
