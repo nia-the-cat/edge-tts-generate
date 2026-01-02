@@ -2,6 +2,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 import tempfile
 import uuid
 from os.path import dirname, exists, join
@@ -20,6 +21,15 @@ from aqt.sound import av_player
 from .external_runtime import get_external_python
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
+
+
+def _get_subprocess_flags():
+    """Get subprocess creation flags to hide console windows on Windows."""
+    if sys.platform == "win32":
+        # On Windows, use CREATE_NO_WINDOW flag to prevent console window from appearing
+        # CREATE_NO_WINDOW = 0x08000000
+        return {"creationflags": 0x08000000}
+    return {}
 
 
 def getCommonFields(selected_notes):
@@ -77,7 +87,7 @@ class MyDialog(qt.QDialog):
             QMessageBox.critical(
                 mw,
                 "Error",
-                f"The chosen notes share no fields in common. Make sure you're not selecting two different note types",
+                "The chosen notes share no fields in common. Make sure you're not selecting two different note types",
             )
 
         self.source_combo = qt.QComboBox()
@@ -133,13 +143,13 @@ class MyDialog(qt.QDialog):
         self.grid_layout.addWidget(audio_options_label, 1, 0, 1, 2)
 
         self.audio_handling_group = QButtonGroup(self)
-        
+
         self.append_radio = QRadioButton("Append (keep existing content)")
         self.append_radio.setToolTip("Add the generated audio to the field without removing any existing content. This is the safest option.")
-        
+
         self.overwrite_radio = QRadioButton("Overwrite (replace content)")
         self.overwrite_radio.setToolTip("Replace the entire content of the destination field with the new audio")
-        
+
         self.skip_radio = QRadioButton("Skip (if audio exists)")
         self.skip_radio.setToolTip("Skip generating audio for notes that already have content in the destination field")
 
@@ -160,7 +170,7 @@ class MyDialog(qt.QDialog):
         audio_options_layout.addWidget(self.append_radio)
         audio_options_layout.addWidget(self.overwrite_radio)
         audio_options_layout.addWidget(self.skip_radio)
-        
+
         self.grid_layout.addLayout(audio_options_layout, 1, 2, 1, 3)
 
         # TODO: Does anyone actually want to not ignore stuff in brackets? The checkbox is here if we need it but I don't think anyone wants brackets to be read
@@ -302,7 +312,7 @@ class MyDialog(qt.QDialog):
             self.destination_combo.currentIndex()
         )
         source_text = self.source_combo.itemText(self.source_combo.currentIndex())
-        
+
         # Don't allow selecting "Create new field" option directly without entering a name
         if destination_text == CREATE_NEW_FIELD_OPTION:
             QMessageBox.critical(
@@ -311,7 +321,7 @@ class MyDialog(qt.QDialog):
                 "Please select an existing field or create a new one by selecting '[ + Create new field... ]' and entering a name.",
             )
             return
-        
+
         # Check if source and destination are the same (only if destination is not a new field)
         if self.new_field_name is None and self.source_combo.currentIndex() == self.destination_combo.currentIndex():
             QMessageBox.critical(
@@ -405,7 +415,7 @@ class MyDialog(qt.QDialog):
 
         # Extract language code from voice name (e.g., "ja-JP-NanamiNeural" -> "ja")
         lang_code = speaker.split("-")[0] if "-" in speaker else "en"
-        
+
         # Get preview sentences for the language, fallback to English if not found
         preview_sentences = preview_sentences_by_lang.get(lang_code, preview_sentences_by_lang["en"])
 
@@ -463,6 +473,7 @@ def GenerateAudioQuery(text_and_speaker_tuple, config):
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            **_get_subprocess_flags(),
         )
     except subprocess.CalledProcessError as exc:
         error_output = exc.stderr.decode("utf-8", errors="replace")
@@ -483,7 +494,7 @@ def addFieldToNoteTypes(field_name, selected_notes):
         note = mw.col.get_note(note_id)
         model = note.note_type()
         model_id = model["id"]
-        
+
         if model_id not in note_types_updated:
             # Check if field already exists in this note type
             existing_fields = [f["name"] for f in model["flds"]]
@@ -506,10 +517,10 @@ def onEdgeTTSOptionSelected(browser):
         destination_field = dialog.destination_combo.itemText(
             dialog.destination_combo.currentIndex()
         )
-        
+
         # Get the audio handling mode
         audio_handling_mode = dialog.getAudioHandlingMode()
-        
+
         # Check if we need to create a new field
         new_field_name = dialog.new_field_name
 
@@ -524,7 +535,7 @@ def onEdgeTTSOptionSelected(browser):
         config["last_speaker_name"] = speaker_combo_text
         config["last_audio_handling"] = audio_handling_mode
         mw.addonManager.writeConfig(__name__, config)
-        
+
         # Create the new field if needed
         if new_field_name:
             addFieldToNoteTypes(new_field_name, dialog.selected_notes)
@@ -545,7 +556,7 @@ def onEdgeTTSOptionSelected(browser):
             note_text = re.sub(r" ?\S*?\[(.*?)\]", r"\1", note_text)
             # Remove stuff between brackets. Usually japanese cards have pitch accent and reading info in brackets like 「 タイトル[;a,h] を 聞[き,きく;h]いた わけ[;a] じゃ ない[;a] ！」
             if dialog.ignore_brackets_checkbox.isChecked():
-                note_text = re.sub("\[.*?\]", "", note_text)
+                note_text = re.sub(r"\[.*?\]", "", note_text)
             note_text = re.sub(
                 " ", "", note_text
             )  # there's a lot of spaces for whatever reason which throws off the voice gen so we remove all spaces (japanese doesn't care about them anyway)
@@ -590,16 +601,16 @@ def onEdgeTTSOptionSelected(browser):
             skipped_count = 0
             for note_id in notes:
                 notes_so_far += 1
-                
+
                 note = mw.col.get_note(note_id)
                 existing_content = getFieldContent(note, destination_field)
-                
+
                 # Handle skip mode: skip if destination field already has content
                 if audio_handling_mode == "skip" and existing_content:
                     skipped_count += 1
                     updateProgress(notes_so_far, total_notes, skipped_count)
                     continue
-                
+
                 updateProgress(notes_so_far, total_notes, skipped_count)
 
                 note_text_and_speaker = getNoteTextAndSpeaker(note_id)
@@ -619,10 +630,10 @@ def onEdgeTTSOptionSelected(browser):
 
                 audio_field_text = f"[sound:{filename}]"
                 note = mw.col.get_note(note_id)
-                
+
                 # Re-read current content from fresh note to avoid stale data issues
                 current_content = getFieldContent(note, destination_field)
-                
+
                 # Handle audio placement based on mode
                 if audio_handling_mode == "append" and current_content:
                     # Append: keep existing content and add new audio
@@ -630,7 +641,7 @@ def onEdgeTTSOptionSelected(browser):
                 else:
                     # Overwrite: replace content entirely (also used for empty fields)
                     note[destination_field] = audio_field_text
-                    
+
                 mw.col.update_note(note)
                 if mw.progress.want_cancel():
                     break
