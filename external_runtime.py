@@ -11,7 +11,7 @@ EMBED_URL = (
     f"python-{PYTHON_VERSION}-embed-amd64.zip"
 )
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
-EDGE_TTS_SPEC = "edge-tts==6.1.0"
+EDGE_TTS_SPEC = "edge-tts==6.1.9"
 
 
 def _download(url: str, destination: str) -> None:
