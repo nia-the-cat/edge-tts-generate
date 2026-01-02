@@ -5,11 +5,8 @@ Verifies that CREATE_NO_WINDOW flag is properly applied on Windows systems.
 
 import importlib.util
 import os
-import subprocess
 import sys
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Load external_runtime from the parent directory
 _external_runtime_path = os.path.join(
