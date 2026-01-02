@@ -24,6 +24,8 @@ def _load_module(module_name, module_path):
 _base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+@pytest.mark.integration
+@pytest.mark.smoke
 class TestConfigIntegration:
     """Test that configuration files are consistent."""
 
@@ -106,6 +108,7 @@ class TestConfigIntegration:
             assert os.path.exists(filepath), f"Required file missing: {filename}"
 
 
+@pytest.mark.integration
 class TestModuleImports:
     """Test that modules can be imported correctly."""
 
@@ -129,6 +132,7 @@ class TestModuleImports:
         assert hasattr(external_tts_runner, "synthesize")
 
 
+@pytest.mark.integration
 class TestExternalRuntimeConstants:
     """Test external runtime configuration."""
 
@@ -154,6 +158,7 @@ class TestExternalRuntimeConstants:
         assert "edge-tts" in spec
 
 
+@pytest.mark.integration
 class TestTextProcessingPipeline:
     """Test the text processing pipeline."""
 
@@ -234,6 +239,7 @@ class TestTextProcessingPipeline:
             assert expected_contains in result or result == expected_contains
 
 
+@pytest.mark.integration
 class TestVoiceParameterGeneration:
     """Test voice parameter generation."""
 
@@ -261,6 +267,7 @@ class TestVoiceParameterGeneration:
             assert volume.endswith("%")
 
 
+@pytest.mark.integration
 class TestErrorHandling:
     """Test error handling scenarios."""
 
