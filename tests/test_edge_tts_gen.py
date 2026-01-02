@@ -162,21 +162,19 @@ class TestTextProcessingRegex:
         result = entity_re.sub("", text)
         assert result == "less than"
 
-    def test_furigana_extraction(self):
-        """Test furigana extraction from brackets."""
-        # Pattern: Replace kanji with furigana from brackets
-        # The pattern replaces the kanji and brackets with just the reading
+    def test_reading_extraction(self):
+        """Test reading extraction from brackets."""
+        # Pattern: Replace text with reading from brackets
+        # The pattern replaces the word and brackets with just the reading
         pattern = r" ?\S*?\[(.*?)\]"
 
         text = "漢字[かんじ]"
         result = re.sub(pattern, r"\1", text)
         assert result == "かんじ"
 
-        # Note: This pattern consumes non-whitespace before the bracket,
-        # so "を" between the two bracketed items will be consumed
+        # Note: This pattern consumes non-whitespace before the bracket
         text = "日本語[にほんご]を勉強[べんきょう]"
         result = re.sub(pattern, r"\1", text)
-        # The "を" gets consumed as part of "\S*?" before "[べんきょう]"
         assert result == "にほんごべんきょう"
 
     def test_bracket_content_removal(self):

@@ -7,6 +7,10 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -124,7 +128,29 @@ jobs:
 
       - name: Run integration tests
         run: |
-          pytest tests/test_integration.py -v --tb=short
+          pytest tests/test_integration.py -v --tb=short -m "integration or not integration"
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run security scan
+        run: |
+          bandit -r . -x ./tests --skip B101 -f txt || true
+        continue-on-error: true
 
   all-tests-passed:
     name: All Tests Passed

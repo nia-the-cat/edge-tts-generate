@@ -65,7 +65,7 @@ ignore = [
     "PLC0415",  # Allow imports not at top-level in tests
     "SIM108",   # Allow if-else instead of ternary for readability in tests
     "SIM117",   # Allow nested with statements in tests
-    "RUF001",   # Allow ambiguous Unicode (used for testing Japanese text)
+    "RUF001",   # Allow ambiguous Unicode (used for testing CJK text)
     "PIE790",   # Allow pass statements in test callbacks
     "PLR0133",  # Allow constant comparisons in tests (for verifying values)
 ]
@@ -77,8 +77,8 @@ ignore = [
     "PLR0915",  # Allow many statements in complex UI functions
     "SIM108",   # Allow if-else instead of ternary for readability
     "SIM113",   # Allow manual index incrementing in specific cases
-    "RUF001",   # Allow fullwidth Unicode characters (Japanese/Chinese text)
-    "RUF003",   # Allow fullwidth Unicode in comments (Japanese text examples)
+    "RUF001",   # Allow fullwidth Unicode characters (CJK text)
+    "RUF003",   # Allow fullwidth Unicode in comments (CJK text examples)
 ]
 
 [tool.ruff.format]
@@ -103,6 +103,8 @@ addopts = "-v --tb=short --strict-markers"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "smoke: marks tests as smoke tests (quick sanity checks)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

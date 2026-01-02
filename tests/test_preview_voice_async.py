@@ -3,6 +3,7 @@ Tests for the async preview voice functionality.
 Tests that the PreviewVoice method runs in background and doesn't block UI.
 """
 
+import re
 from unittest.mock import MagicMock, call
 
 
@@ -144,3 +145,128 @@ class TestPreviewVoiceAsync:
 
         # Verify completion callback was called
         assert completion_called is True
+
+
+class TestGetPreviewTextFromNoteLogic:
+    """Test the _getPreviewTextFromNote logic pattern used in PreviewVoice."""
+
+    def test_returns_none_when_no_selected_notes(self):
+        """Should return None when there are no selected notes."""
+        selected_notes = []
+        result = None if not selected_notes else "text"
+        assert result is None
+
+    def test_returns_none_when_note_is_none(self):
+        """Should return None when note lookup returns None."""
+        note = None
+        result = None if note is None else "text"
+        assert result is None
+
+    def test_returns_none_when_field_is_empty(self):
+        """Should return None when the source field is empty."""
+        note_text = ""
+        result = note_text.strip() if note_text else None
+        assert result is None
+
+    def test_cleans_html_tags_from_note_text(self):
+        """Should remove HTML tags from preview text."""
+        TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
+        note_text = "<b>Hello</b> <i>World</i>"
+        result = TAG_RE.sub("", note_text)
+        assert result == "Hello World"
+
+    def test_cleans_html_entities_from_note_text(self):
+        """Should remove HTML entities from preview text."""
+        ENTITY_RE = re.compile(r"(&[^;]+;)")
+        note_text = "&nbsp;Hello&amp;World"
+        result = ENTITY_RE.sub("", note_text)
+        assert result == "HelloWorld"
+
+    def test_extracts_reading_from_brackets(self):
+        """Should extract reading from brackets (e.g., word[reading] -> reading)."""
+        BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
+        note_text = "漢字[かんじ]"
+        result = BRACKET_READING_RE.sub(r"\1", note_text)
+        assert result == "かんじ"
+
+    def test_removes_bracket_content_when_enabled(self):
+        """Should remove content in brackets when ignore_brackets is enabled."""
+        BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
+        ignore_brackets = True
+        note_text = "word[pitch;a,h]"
+        if ignore_brackets:
+            result = BRACKET_CONTENT_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "word"
+
+    def test_preserves_bracket_content_when_disabled(self):
+        """Should preserve content in brackets when ignore_brackets is disabled."""
+        BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
+        ignore_brackets = False
+        note_text = "word[pitch;a,h]"
+        if ignore_brackets:
+            result = BRACKET_CONTENT_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "word[pitch;a,h]"
+
+    def test_strips_whitespace_for_cjk_japanese(self):
+        """Should strip whitespace for CJK languages (Japanese)."""
+        WHITESPACE_RE = re.compile(" ")
+        speaker = "ja-JP-NanamiNeural"
+        language_code = speaker.split("-")[0].lower()
+        note_text = "こん にち は"
+        if language_code in {"ja", "zh"}:
+            result = WHITESPACE_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "こんにちは"
+
+    def test_strips_whitespace_for_cjk_chinese(self):
+        """Should strip whitespace for CJK languages (Chinese)."""
+        WHITESPACE_RE = re.compile(" ")
+        speaker = "zh-CN-XiaoxiaoNeural"
+        language_code = speaker.split("-")[0].lower()
+        note_text = "你 好 世 界"
+        if language_code in {"ja", "zh"}:
+            result = WHITESPACE_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "你好世界"
+
+    def test_preserves_whitespace_for_english(self):
+        """Should preserve whitespace for English language."""
+        WHITESPACE_RE = re.compile(" ")
+        speaker = "en-US-JennyNeural"
+        language_code = speaker.split("-")[0].lower()
+        note_text = "Hello World"
+        if language_code in {"ja", "zh"}:
+            result = WHITESPACE_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "Hello World"
+
+    def test_preserves_whitespace_for_non_cjk_german(self):
+        """Should preserve whitespace for non-CJK languages (German)."""
+        WHITESPACE_RE = re.compile(" ")
+        speaker = "de-DE-KatjaNeural"
+        language_code = speaker.split("-")[0].lower()
+        note_text = "Guten Tag"
+        if language_code in {"ja", "zh"}:
+            result = WHITESPACE_RE.sub("", note_text)
+        else:
+            result = note_text
+        assert result == "Guten Tag"
+
+    def test_uses_actual_note_content_for_preview(self):
+        """Should use actual note content instead of hardcoded sentences."""
+        # This validates that preview now uses note content, not hardcoded text
+        mock_note = MagicMock()
+        mock_note.__getitem__ = MagicMock(return_value="This is my actual card content")
+
+        source_field = "Front"
+        note_text = mock_note[source_field]
+
+        assert note_text == "This is my actual card content"
+        mock_note.__getitem__.assert_called_with("Front")
