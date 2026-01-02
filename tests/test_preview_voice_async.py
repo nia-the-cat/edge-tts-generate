@@ -183,10 +183,10 @@ class TestGetPreviewTextFromNoteLogic:
         assert result == "HelloWorld"
 
     def test_extracts_reading_from_brackets(self):
-        """Should extract reading from brackets (e.g., 漢字[かんじ] -> かんじ)."""
-        KANJI_FURIGANA_RE = re.compile(r" ?\S*?\[(.*?)\]")
+        """Should extract reading from brackets (e.g., word[reading] -> reading)."""
+        BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
         note_text = "漢字[かんじ]"
-        result = KANJI_FURIGANA_RE.sub(r"\1", note_text)
+        result = BRACKET_READING_RE.sub(r"\1", note_text)
         assert result == "かんじ"
 
     def test_removes_bracket_content_when_enabled(self):
@@ -211,8 +211,8 @@ class TestGetPreviewTextFromNoteLogic:
             result = note_text
         assert result == "word[pitch;a,h]"
 
-    def test_strips_whitespace_for_japanese(self):
-        """Should strip whitespace for Japanese language."""
+    def test_strips_whitespace_for_cjk_japanese(self):
+        """Should strip whitespace for CJK languages (Japanese)."""
         WHITESPACE_RE = re.compile(" ")
         speaker = "ja-JP-NanamiNeural"
         language_code = speaker.split("-")[0].lower()
@@ -223,8 +223,8 @@ class TestGetPreviewTextFromNoteLogic:
             result = note_text
         assert result == "こんにちは"
 
-    def test_strips_whitespace_for_chinese(self):
-        """Should strip whitespace for Chinese language."""
+    def test_strips_whitespace_for_cjk_chinese(self):
+        """Should strip whitespace for CJK languages (Chinese)."""
         WHITESPACE_RE = re.compile(" ")
         speaker = "zh-CN-XiaoxiaoNeural"
         language_code = speaker.split("-")[0].lower()
@@ -247,8 +247,8 @@ class TestGetPreviewTextFromNoteLogic:
             result = note_text
         assert result == "Hello World"
 
-    def test_preserves_whitespace_for_german(self):
-        """Should preserve whitespace for German language."""
+    def test_preserves_whitespace_for_non_cjk_german(self):
+        """Should preserve whitespace for non-CJK languages (German)."""
         WHITESPACE_RE = re.compile(" ")
         speaker = "de-DE-KatjaNeural"
         language_code = speaker.split("-")[0].lower()

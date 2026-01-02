@@ -172,7 +172,7 @@ class TestTextProcessingPipeline:
         tag_re = re.compile(r"(<!--.*?-->|<[^>]*>)")
         text = tag_re.sub("", text)
 
-        # Step 3: Replace kanji with furigana from brackets
+        # Step 3: Replace text with reading from brackets
         text = re.sub(r" ?\S*?\[(.*?)\]", r"\1", text)
 
         # Step 4: Remove stuff between brackets (pitch accent info)
@@ -181,7 +181,7 @@ class TestTextProcessingPipeline:
         # Step 5: Remove spaces
         text = re.sub(" ", "", text)
 
-        # Final result should be clean Japanese text
+        # Final result should be clean CJK text
         assert "div" not in text.lower()
         assert "<" not in text
         assert "&" not in text
@@ -217,7 +217,7 @@ class TestTextProcessingPipeline:
             ("<b>Bold</b>", "Bold"),
             # HTML entities
             ("&nbsp;test", "test"),
-            # Japanese with furigana
+            # CJK text with reading annotations
             ("漢字[かんじ]", "かんじ"),
             # Mixed content
             ("<p>Text</p>", "Text"),
@@ -227,7 +227,7 @@ class TestTextProcessingPipeline:
             result = entity_re.sub("", input_text)
             result = tag_re.sub("", result)
 
-            # For furigana test
+            # For reading annotation test
             if "[" in input_text:
                 result = re.sub(r" ?\S*?\[(.*?)\]", r"\1", result)
 

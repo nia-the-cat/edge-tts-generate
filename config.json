@@ -1,24 +1,24 @@
 {
   "speakers": [
-    "ja-JP-NanamiNeural",
-    "ja-JP-KeitaNeural",
     "en-US-JennyNeural",
     "en-US-GuyNeural",
     "en-GB-SoniaNeural",
     "en-GB-RyanNeural",
-    "zh-CN-XiaoxiaoNeural",
-    "zh-CN-YunxiNeural",
-    "ko-KR-SunHiNeural",
-    "ko-KR-InJoonNeural",
     "de-DE-KatjaNeural",
     "de-DE-ConradNeural",
-    "fr-FR-DeniseNeural",
-    "fr-FR-HenriNeural",
     "es-ES-ElviraNeural",
     "es-ES-AlvaroNeural",
+    "fr-FR-DeniseNeural",
+    "fr-FR-HenriNeural",
+    "it-IT-ElsaNeural",
+    "it-IT-DiegoNeural",
+    "ja-JP-NanamiNeural",
+    "ja-JP-KeitaNeural",
+    "ko-KR-SunHiNeural",
+    "ko-KR-InJoonNeural",
     "pt-BR-FranciscaNeural",
     "pt-BR-AntonioNeural",
-    "it-IT-ElsaNeural",
-    "it-IT-DiegoNeural"
+    "zh-CN-XiaoxiaoNeural",
+    "zh-CN-YunxiNeural"
   ]
 }

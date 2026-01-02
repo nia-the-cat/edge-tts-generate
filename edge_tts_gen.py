@@ -26,7 +26,7 @@ from .external_runtime import get_external_python
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
 TAG_RE = re.compile(r"(<!--.*?-->|<[^>]*>)")
 ENTITY_RE = re.compile(r"(&[^;]+;)")
-KANJI_FURIGANA_RE = re.compile(r" ?\S*?\[(.*?)\]")
+BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
 BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
 WHITESPACE_RE = re.compile(" ")
 
@@ -394,14 +394,14 @@ class MyDialog(qt.QDialog):
         note_text = ENTITY_RE.sub("", note_text)
         note_text = TAG_RE.sub("", note_text)
 
-        # Replace text with reading from brackets (e.g., 漢字[かんじ] -> かんじ)
-        note_text = KANJI_FURIGANA_RE.sub(r"\1", note_text)
+        # Replace text with reading from brackets (e.g., word[reading] -> reading)
+        note_text = BRACKET_READING_RE.sub(r"\1", note_text)
 
         # Remove stuff between brackets if option is enabled
         if self.ignore_brackets_checkbox.isChecked():
             note_text = BRACKET_CONTENT_RE.sub("", note_text)
 
-        # Strip whitespace for languages that don't use spaces (e.g., Japanese, Chinese)
+        # Strip whitespace for CJK languages that don't use spaces between words
         if speaker:
             language_code = speaker.split("-")[0].lower()
             if language_code in {"ja", "zh"}:
@@ -623,8 +623,8 @@ def onEdgeTTSOptionSelected(browser):
             note_text = ENTITY_RE.sub("", note_text)
             note_text = TAG_RE.sub("", note_text)
 
-            # Replace text with reading from brackets (e.g., 漢字[かんじ] -> かんじ)
-            note_text = KANJI_FURIGANA_RE.sub(r"\1", note_text)
+            # Replace text with reading from brackets (e.g., word[reading] -> reading)
+            note_text = BRACKET_READING_RE.sub(r"\1", note_text)
             # Remove stuff between brackets (commonly used for readings, pitch accent, or metadata)
             if dialog.ignore_brackets_checkbox.isChecked():
                 note_text = BRACKET_CONTENT_RE.sub("", note_text)
@@ -632,7 +632,7 @@ def onEdgeTTSOptionSelected(browser):
             if _should_strip_whitespace(speaker):
                 note_text = WHITESPACE_RE.sub(
                     "", note_text
-                )  # Strip spaces for languages that don't use them (e.g., Japanese, Chinese)
+                )  # Strip spaces for CJK languages that don't use spaces between words
 
             return (note_text, speaker)
 
