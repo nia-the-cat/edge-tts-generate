@@ -30,7 +30,7 @@ jobs:
 
       - name: Check if tag already exists
         run: |
-          if git rev-parse "${{ steps.normalize.outputs.version }}" >/dev/null 2>&1; then
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.normalize.outputs.version }}$"; then
             echo "Error: Tag ${{ steps.normalize.outputs.version }} already exists"
             exit 1
           fi
