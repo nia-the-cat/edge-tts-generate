@@ -187,8 +187,10 @@ class MyDialog(qt.QDialog):
         self.ignore_brackets_checkbox.setToolTip(
             "Ignores things between brackets. Usually Japanese cards have pitch accent and reading info in brackets. Leave this checked unless you really know what you're doing"
         )
-        self.ignore_brackets_checkbox.setChecked(True)
-        # self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
+        self.ignore_brackets_checkbox.setChecked(
+            config.get("ignore_brackets_enabled", True)
+        )
+        self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
 
         self.grid_layout.addWidget(qt.QLabel("Speaker: "), 2, 0)
         self.speakers = getSpeakerList(config)
@@ -628,6 +630,7 @@ def onEdgeTTSOptionSelected(browser):
         config["last_destination_field"] = destination_field
         config["last_speaker_name"] = speaker_combo_text
         config["last_audio_handling"] = audio_handling_mode
+        config["ignore_brackets_enabled"] = dialog.ignore_brackets_checkbox.isChecked()
         mw.addonManager.writeConfig(__name__, config)
 
         # Create the new field if needed
