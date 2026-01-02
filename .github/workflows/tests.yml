@@ -151,30 +151,3 @@ jobs:
         run: |
           bandit -r . -x ./tests --skip B101 -f txt || true
         continue-on-error: true
-
-  all-tests-passed:
-    name: All Tests Passed
-    needs: [test, lint, json-validation, integration]
-    runs-on: ubuntu-latest
-    permissions: {}
-    if: always()
-    steps:
-      - name: Check all jobs passed
-        run: |
-          if [[ "${{ needs.test.result }}" != "success" ]]; then
-            echo "Tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "Linting failed"
-            exit 1
-          fi
-          if [[ "${{ needs.json-validation.result }}" != "success" ]]; then
-            echo "JSON validation failed"
-            exit 1
-          fi
-          if [[ "${{ needs.integration.result }}" != "success" ]]; then
-            echo "Integration tests failed"
-            exit 1
-          fi
-          echo "All checks passed!"
