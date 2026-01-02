@@ -569,6 +569,13 @@ def onEdgeTTSOptionSelected(browser):
                 )
             )
 
+        def getFieldContent(note, field_name):
+            """Get content of a field, returning empty string if field doesn't exist"""
+            try:
+                return note[field_name].strip()
+            except KeyError:
+                return ""
+
         def on_done(future):
             mw.progress.finish()
             mw.reset()
@@ -590,11 +597,7 @@ def onEdgeTTSOptionSelected(browser):
                 notes_so_far += 1
                 
                 note = mw.col.get_note(note_id)
-                # Check if destination field exists in note, get existing content
-                try:
-                    existing_content = note[destination_field].strip()
-                except KeyError:
-                    existing_content = ""
+                existing_content = getFieldContent(note, destination_field)
                 
                 # Handle skip mode: skip if destination field already has content
                 if audio_handling_mode == "skip" and existing_content:
@@ -622,10 +625,13 @@ def onEdgeTTSOptionSelected(browser):
                 audio_field_text = f"[sound:{filename}]"
                 note = mw.col.get_note(note_id)
                 
+                # Re-read current content from fresh note to avoid stale data issues
+                current_content = getFieldContent(note, destination_field)
+                
                 # Handle audio placement based on mode
-                if audio_handling_mode == "append" and existing_content:
-                    # Append: keep existing content and add new audio (no space needed for sound tags)
-                    note[destination_field] = existing_content + " " + audio_field_text
+                if audio_handling_mode == "append" and current_content:
+                    # Append: keep existing content and add new audio
+                    note[destination_field] = current_content + " " + audio_field_text
                 else:
                     # Overwrite: replace content entirely (also used for empty fields)
                     note[destination_field] = audio_field_text
