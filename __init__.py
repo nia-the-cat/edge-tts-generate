@@ -20,6 +20,13 @@ def on_browser_menus_did_init(browser: browser.Browser):
     browser.form.menuEdit.addSeparator()
     browser.form.menuEdit.addAction(action)
 
+    # Add "Generate Batch Audio" menu to the menu bar for easier access
+    batch_menu = qt.QMenu("Generate Batch Audio", browser)
+    batch_action = batch_menu.addAction("Configure and Generate...")
+    batch_action.setShortcut(qt.QKeySequence("Ctrl+Shift+G"))
+    batch_action.triggered.connect(lambda: edge_tts_gen.onEdgeTTSOptionSelected(browser))
+    browser.form.menubar.addMenu(batch_menu)
+
 
 gui_hooks.browser_will_show_context_menu.append(on_browser_will_show_context_menu)
 gui_hooks.browser_menus_did_init.append(on_browser_menus_did_init)
