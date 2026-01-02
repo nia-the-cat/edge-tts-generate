@@ -1,5 +1,9 @@
 # EdgeTTS Audio Generator for Anki
 
+Forked from https://github.com/Gilfaro/edge-tts-generate, !!! This repo uses AI unfortunately but it solves an issue I need fixed!!!
+
+This fork is language agnostic and I'm trying to get it stable for regular use.
+
 Generate high quality text-to-speech audio for your Anki cards using the edge-tts speech synthesis software. Supports multiple languages and voices.
 
 # What does this do?
