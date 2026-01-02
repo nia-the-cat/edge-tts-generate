@@ -525,7 +525,11 @@ def onEdgeTTSOptionSelected(browser):
                 notes_so_far += 1
                 
                 note = mw.col.get_note(note_id)
-                existing_content = note[destination_field].strip() if destination_field in note else ""
+                # Check if destination field exists in note, get existing content
+                try:
+                    existing_content = note[destination_field].strip()
+                except KeyError:
+                    existing_content = ""
                 
                 # Handle skip mode: skip if destination field already has content
                 if audio_handling_mode == "skip" and existing_content:
@@ -555,8 +559,8 @@ def onEdgeTTSOptionSelected(browser):
                 
                 # Handle audio placement based on mode
                 if audio_handling_mode == "append" and existing_content:
-                    # Append: keep existing content and add new audio
-                    note[destination_field] = existing_content + audio_field_text
+                    # Append: keep existing content and add new audio (no space needed for sound tags)
+                    note[destination_field] = existing_content + " " + audio_field_text
                 else:
                     # Overwrite: replace content entirely (also used for empty fields)
                     note[destination_field] = audio_field_text
