@@ -63,11 +63,12 @@ class TestDownloadFunctionLogic:
     def test_download_url_format(self):
         """Test that URLs are properly formatted for download."""
         url = "https://example.com/file.zip"
-        destination = "/tmp/file.zip"
+        destination = os.path.join("tmp", "file.zip")
 
         # Test that parameters would be valid
         assert url.startswith("https://")
-        assert destination.startswith("/")
+        # Destination should be a valid path (not checking for specific separator)
+        assert "file.zip" in destination
 
 
 class TestExtractZipFunctionLogic:
@@ -75,12 +76,12 @@ class TestExtractZipFunctionLogic:
 
     def test_extract_zip_parameters(self):
         """Test extract zip would receive valid parameters."""
-        zip_path = "/tmp/archive.zip"
-        target_dir = "/tmp/target"
+        zip_path = os.path.join("tmp", "archive.zip")
+        target_dir = os.path.join("tmp", "target")
 
-        # Both paths should be absolute
-        assert zip_path.startswith("/")
-        assert target_dir.startswith("/")
+        # Both paths should contain the expected components
+        assert "archive.zip" in zip_path
+        assert "target" in target_dir
 
 
 class TestEnsureImportSiteLogic:
@@ -111,15 +112,17 @@ class TestEnsureGetPipLogic:
 
     def test_get_pip_script_path_construction(self):
         """Test construction of get-pip.py path."""
-        cache_dir = "/tmp/cache"
+        cache_dir = os.path.join("tmp", "cache")
         script_path = os.path.join(cache_dir, "get-pip.py")
 
-        assert script_path == "/tmp/cache/get-pip.py"
+        # Use os.path.join for expected path to ensure cross-platform compatibility
+        expected = os.path.join("tmp", "cache", "get-pip.py")
+        assert script_path == expected
 
     def test_get_pip_command_construction(self):
         """Test construction of get-pip command."""
-        python_exe = "/tmp/python.exe"
-        script_path = "/tmp/cache/get-pip.py"
+        python_exe = os.path.join("tmp", "python.exe")
+        script_path = os.path.join("tmp", "cache", "get-pip.py")
 
         command = [python_exe, script_path, "--no-warn-script-location"]
 
@@ -133,7 +136,7 @@ class TestPythonCanImportLogic:
 
     def test_import_command_construction(self):
         """Test construction of import check command."""
-        python_exe = "/tmp/python.exe"
+        python_exe = os.path.join("tmp", "python.exe")
         module = "edge_tts"
 
         command = [python_exe, "-c", f"import {module}"]
@@ -148,7 +151,7 @@ class TestGetExternalPythonLogic:
 
     def test_runtime_dir_construction(self):
         """Test construction of runtime directory path."""
-        addon_dir = "/home/user/.local/share/Anki2/addons21/edge-tts"
+        addon_dir = os.path.join("home", "user", ".local", "share", "Anki2", "addons21", "edge-tts")
 
         runtime_dir = os.path.join(addon_dir, "runtime")
 
@@ -156,28 +159,34 @@ class TestGetExternalPythonLogic:
 
     def test_python_dir_construction(self):
         """Test construction of python directory path."""
-        runtime_dir = "/tmp/runtime"
+        runtime_dir = os.path.join("tmp", "runtime")
         python_version = "3.14.2"
 
         python_dir = os.path.join(runtime_dir, f"python-{python_version}")
 
-        assert python_dir == "/tmp/runtime/python-3.14.2"
+        # Use os.path.join for expected path to ensure cross-platform compatibility
+        expected = os.path.join("tmp", "runtime", f"python-{python_version}")
+        assert python_dir == expected
 
     def test_python_exe_path_construction(self):
         """Test construction of python.exe path."""
-        python_dir = "/tmp/runtime/python-3.14.2"
+        python_dir = os.path.join("tmp", "runtime", "python-3.14.2")
 
         python_exe = os.path.join(python_dir, "python.exe")
 
-        assert python_exe == "/tmp/runtime/python-3.14.2/python.exe"
+        # Use os.path.join for expected path to ensure cross-platform compatibility
+        expected = os.path.join("tmp", "runtime", "python-3.14.2", "python.exe")
+        assert python_exe == expected
 
     def test_archive_path_construction(self):
         """Test construction of download archive path."""
-        runtime_dir = "/tmp/runtime"
+        runtime_dir = os.path.join("tmp", "runtime")
 
         archive_path = os.path.join(runtime_dir, "python-embed.zip")
 
-        assert archive_path == "/tmp/runtime/python-embed.zip"
+        # Use os.path.join for expected path to ensure cross-platform compatibility
+        expected = os.path.join("tmp", "runtime", "python-embed.zip")
+        assert archive_path == expected
 
 
 class TestPipInstallCommandLogic:
@@ -185,7 +194,7 @@ class TestPipInstallCommandLogic:
 
     def test_pip_upgrade_command(self):
         """Test pip upgrade command construction."""
-        python_exe = "/tmp/python.exe"
+        python_exe = os.path.join("tmp", "python.exe")
 
         command = [python_exe, "-m", "pip", "install", "--upgrade", "pip"]
 
@@ -196,7 +205,7 @@ class TestPipInstallCommandLogic:
 
     def test_edge_tts_install_command(self):
         """Test edge-tts install command construction."""
-        python_exe = "/tmp/python.exe"
+        python_exe = os.path.join("tmp", "python.exe")
         edge_tts_spec = "edge-tts==7.2.7"
 
         command = [python_exe, "-m", "pip", "install", edge_tts_spec]
