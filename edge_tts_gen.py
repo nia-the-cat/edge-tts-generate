@@ -674,6 +674,15 @@ def onEdgeTTSOptionSelected(browser):
             note = mw.col.get_note(note_id)
             note_text = note[source_field]
 
+            def _should_strip_whitespace(selected_voice: str) -> bool:
+                """Only strip spaces for languages that don't rely on them."""
+
+                if not selected_voice:
+                    return False
+
+                language_code = selected_voice.split("-")[0].lower()
+                return language_code in {"ja", "zh"}
+
             # Remove html tags https://stackoverflow.com/a/19730306
             note_text = ENTITY_RE.sub("", note_text)
             note_text = TAG_RE.sub("", note_text)
@@ -683,9 +692,11 @@ def onEdgeTTSOptionSelected(browser):
             # Remove stuff between brackets. Usually japanese cards have pitch accent and reading info in brackets like 「 タイトル[;a,h] を 聞[き,きく;h]いた わけ[;a] じゃ ない[;a] ！」
             if dialog.ignore_brackets_checkbox.isChecked():
                 note_text = BRACKET_CONTENT_RE.sub("", note_text)
-            note_text = WHITESPACE_RE.sub(
-                "", note_text
-            )  # there's a lot of spaces for whatever reason which throws off the voice gen so we remove all spaces (japanese doesn't care about them anyway)
+
+            if _should_strip_whitespace(speaker):
+                note_text = WHITESPACE_RE.sub(
+                    "", note_text
+                )  # there's a lot of spaces for whatever reason which throws off the voice gen so we remove all spaces (japanese doesn't care about them anyway)
 
             return (note_text, speaker)
 
