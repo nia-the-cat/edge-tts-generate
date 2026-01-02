@@ -10,6 +10,7 @@ import uuid
 from os.path import dirname, exists, join
 
 from aqt import mw, qt
+from aqt.utils import tooltip
 from aqt.qt import (
     QButtonGroup,
     QInputDialog,
@@ -736,6 +737,7 @@ def onEdgeTTSOptionSelected(browser):
             )
             notes_so_far = 0
             skipped_count = 0
+            missing_text_skips = 0
             pending_items = []
             pending_note_ids = []
 
@@ -751,6 +753,12 @@ def onEdgeTTSOptionSelected(browser):
                     continue
 
                 note_text, selected_voice = getNoteTextAndSpeaker(note_id)
+                if not note_text.strip():
+                    notes_so_far += 1
+                    skipped_count += 1
+                    missing_text_skips += 1
+                    updateProgress(notes_so_far, total_notes, skipped_count)
+                    continue
                 pending_items.append((str(note_id), note_text, selected_voice))
                 pending_note_ids.append(note_id)
 
@@ -797,6 +805,13 @@ def onEdgeTTSOptionSelected(browser):
                 updateProgress(notes_so_far, total_notes, skipped_count)
                 if mw.progress.want_cancel():
                     break
+
+            if missing_text_skips > 0:
+                mw.taskman.run_on_main(
+                    lambda: tooltip(
+                        f"Skipped {missing_text_skips} notes with no text in the source field."
+                    )
+                )
 
     else:
         print("Canceled!")
