@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 import random
 import re
@@ -474,9 +476,10 @@ class MyDialog(qt.QDialog):
         mw.taskman.run_in_background(generate_preview, on_preview_done)
 
 
-def GenerateAudioQuery(text_and_speaker_tuple, config):
-    text = text_and_speaker_tuple[0]
-    voice = text_and_speaker_tuple[1]
+def GenerateAudioBatch(text_speaker_items, config):
+    if not text_speaker_items:
+        return {}
+
     addon_dir = dirname(__file__)
 
     try:
@@ -486,22 +489,31 @@ def GenerateAudioQuery(text_and_speaker_tuple, config):
             "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
         )
 
+    payload = {
+        "items": [
+            {"id": identifier, "text": text}
+            for identifier, text, _voice in text_speaker_items
+        ]
+    }
+
     with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", suffix=".txt", delete=False
+        mode="w", encoding="utf-8", suffix=".json", delete=False
     ) as handle:
-        handle.write(text)
-        text_path = handle.name
+        json.dump(payload, handle)
+        batch_path = handle.name
 
     pitch = f"{config.get('pitch_slider_value', 0):+}Hz"
     rate = f"{config.get('speed_slider_value', 0):+}%"
     volume = f"{config.get('volume_slider_value', 0):+}%"
+    # All items share the same voice; take the first entry
+    voice = text_speaker_items[0][2]
 
     runner_path = join(addon_dir, "external_tts_runner.py")
     command = [
         python_exe,
         runner_path,
-        "--text-file",
-        text_path,
+        "--batch-file",
+        batch_path,
         "--voice",
         voice,
         "--pitch",
@@ -518,18 +530,44 @@ def GenerateAudioQuery(text_and_speaker_tuple, config):
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
             **_get_subprocess_flags(),
         )
     except subprocess.CalledProcessError as exc:
-        error_output = exc.stderr.decode("utf-8", errors="replace")
+        error_output = exc.stderr
         raise Exception(
-            f"Unable to generate audio for `{text}`. External runner failed with: {error_output}"
+            "Unable to generate audio. External runner failed with: "
+            f"{error_output}"
         )
     finally:
-        if exists(text_path):
-            os.remove(text_path)
+        if exists(batch_path):
+            os.remove(batch_path)
 
-    return result.stdout
+    try:
+        decoded_results = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        raise Exception(
+            f"Failed to parse audio generation result: {exc}"
+        ) from exc
+
+    audio_map = {}
+    for item in decoded_results:
+        identifier = str(item.get("id", ""))
+        audio_b64 = item.get("audio", "")
+        try:
+            audio_map[identifier] = base64.b64decode(audio_b64)
+        except Exception as exc:
+            raise Exception(
+                f"Failed to decode audio data for item {identifier}: {exc}"
+            ) from exc
+    return audio_map
+
+
+def GenerateAudioQuery(text_and_speaker_tuple, config):
+    text = text_and_speaker_tuple[0]
+    voice = text_and_speaker_tuple[1]
+    batch_result = GenerateAudioBatch([(0, text, voice)], config)
+    return batch_result.get("0", b"")
 
 
 def addFieldToNoteTypes(field_name, selected_notes):
@@ -641,25 +679,39 @@ def onEdgeTTSOptionSelected(browser):
             )
             notes_so_far = 0
             skipped_count = 0
-            for note_id in notes:
-                notes_so_far += 1
+            pending_items = []
+            pending_note_ids = []
 
+            for note_id in notes:
                 note = mw.col.get_note(note_id)
                 existing_content = getFieldContent(note, destination_field)
 
                 # Handle skip mode: skip if destination field already has content
                 if audio_handling_mode == "skip" and existing_content:
+                    notes_so_far += 1
                     skipped_count += 1
                     updateProgress(notes_so_far, total_notes, skipped_count)
                     continue
 
-                updateProgress(notes_so_far, total_notes, skipped_count)
+                note_text, selected_voice = getNoteTextAndSpeaker(note_id)
+                pending_items.append((str(note_id), note_text, selected_voice))
+                pending_note_ids.append(note_id)
 
-                note_text_and_speaker = getNoteTextAndSpeaker(note_id)
+            if not pending_items:
+                return
 
-                audio_data = GenerateAudioQuery(
-                    note_text_and_speaker, mw.addonManager.getConfig(__name__)
-                )
+            audio_map = GenerateAudioBatch(
+                pending_items, mw.addonManager.getConfig(__name__)
+            )
+
+            for note_id in pending_note_ids:
+                notes_so_far += 1
+                audio_data = audio_map.get(str(note_id))
+                if audio_data is None:
+                    raise Exception(
+                        f"No audio returned for note {note_id}. Please try again."
+                    )
+
                 media_dir = mw.col.media.dir()
 
                 file_id = str(uuid.uuid4())
@@ -685,6 +737,7 @@ def onEdgeTTSOptionSelected(browser):
                     note[destination_field] = audio_field_text
 
                 mw.col.update_note(note)
+                updateProgress(notes_so_far, total_notes, skipped_count)
                 if mw.progress.want_cancel():
                     break
 
