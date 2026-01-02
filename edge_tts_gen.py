@@ -204,6 +204,9 @@ class MyDialog(qt.QDialog):
         self.speaker_combo.setCurrentIndex(speaker_combo_index)
 
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
+        self.preview_voice_button.setToolTip(
+            "Preview the selected voice with a sample sentence. First preview may take a few seconds to initialize the speech engine."
+        )
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
         self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
@@ -423,7 +426,7 @@ class MyDialog(qt.QDialog):
 
         # Disable button and show loading state during generation
         original_text = self.preview_voice_button.text()
-        self.preview_voice_button.setText("Generating preview...")
+        self.preview_voice_button.setText("Loading preview (may take a few seconds)...")
         self.preview_voice_button.setEnabled(False)
 
         def generate_preview():
