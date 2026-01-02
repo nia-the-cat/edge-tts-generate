@@ -59,8 +59,7 @@ def _ensure_get_pip(python_exe: str, cache_dir: str) -> str:
     subprocess.run(
         [python_exe, script_path, "--no-warn-script-location"],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         **_get_subprocess_flags(),
     )
     return script_path
@@ -71,8 +70,7 @@ def _python_can_import(python_exe: str, module: str) -> bool:
         subprocess.run(
             [python_exe, "-c", f"import {module}"],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
         return True
@@ -98,8 +96,7 @@ def get_external_python(addon_dir: str) -> str:
         subprocess.run(
             [python_exe, "-m", "pip", "install", "--upgrade", "pip"],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
 
@@ -107,8 +104,7 @@ def get_external_python(addon_dir: str) -> str:
         subprocess.run(
             [python_exe, "-m", "pip", "install", EDGE_TTS_SPEC],
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             **_get_subprocess_flags(),
         )
 

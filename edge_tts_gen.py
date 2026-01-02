@@ -10,7 +10,6 @@ import uuid
 from os.path import dirname, exists, join
 
 from aqt import mw, qt
-from aqt.utils import tooltip
 from aqt.qt import (
     QButtonGroup,
     QInputDialog,
@@ -20,6 +19,7 @@ from aqt.qt import (
     QSlider,
 )
 from aqt.sound import av_player
+from aqt.utils import tooltip
 
 from .external_runtime import get_external_python
 
@@ -488,7 +488,7 @@ class MyDialog(qt.QDialog):
 
             try:
                 result = future.result()
-                
+
                 def play_preview():
                     """Write file and play audio on main thread"""
                     addon_path = dirname(__file__)
@@ -496,7 +496,7 @@ class MyDialog(qt.QDialog):
                     with open(preview_path, "wb") as f:
                         f.write(result)
                     av_player.play_file(preview_path)
-                
+
                 mw.taskman.run_on_main(play_preview)
             except Exception as exc:
                 error_msg = str(exc)
@@ -520,10 +520,10 @@ def GenerateAudioBatch(text_speaker_items, config):
 
     try:
         python_exe = get_external_python(addon_dir)
-    except Exception:
+    except Exception as exc:
         raise Exception(
             "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
-        )
+        ) from exc
 
     payload = {
         "items": [
@@ -564,8 +564,7 @@ def GenerateAudioBatch(text_speaker_items, config):
         result = subprocess.run(
             command,
             check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             **_get_subprocess_flags(),
         )
@@ -574,7 +573,7 @@ def GenerateAudioBatch(text_speaker_items, config):
         raise Exception(
             "Unable to generate audio. External runner failed with: "
             f"{error_output}"
-        )
+        ) from exc
     finally:
         if exists(batch_path):
             os.remove(batch_path)
@@ -724,7 +723,7 @@ def onEdgeTTSOptionSelected(browser):
             mw.progress.finish()
             mw.reset()
 
-        fut = mw.taskman.run_in_background(
+        mw.taskman.run_in_background(
             lambda: GenerateAudio(dialog.selected_notes), on_done
         )
 

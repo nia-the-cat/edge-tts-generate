@@ -3,7 +3,6 @@ import asyncio
 import base64
 import json
 import sys
-from typing import Dict, List
 
 import edge_tts
 
@@ -25,18 +24,18 @@ async def synthesize_text(text: str, args: argparse.Namespace) -> bytes:
 
 
 async def synthesize(args: argparse.Namespace) -> bytes:
-    with open(args.text_file, "r", encoding="utf-8") as handle:
+    with open(args.text_file, encoding="utf-8") as handle:
         text = handle.read()
     return await synthesize_text(text, args)
 
 
-async def synthesize_batch(args: argparse.Namespace) -> List[Dict[str, str]]:
-    with open(args.batch_file, "r", encoding="utf-8") as handle:
+async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
+    with open(args.batch_file, encoding="utf-8") as handle:
         payload = json.load(handle)
 
     items = payload.get("items", [])
-    identifiers: List[str] = []
-    tasks: List[asyncio.Task[bytes]] = []
+    identifiers: list[str] = []
+    tasks: list[asyncio.Task[bytes]] = []
 
     for item in items:
         text = item.get("text", "")

@@ -260,7 +260,7 @@ class TestSynthesizeFunction:
             external_tts_runner = _load_external_tts_runner()
 
             async def fake_synthesize_text(text, _args):
-                return f"audio-{text}".encode("utf-8")
+                return f"audio-{text}".encode()
 
             with patch.object(
                 external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text
