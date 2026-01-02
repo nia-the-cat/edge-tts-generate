@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import urllib.request
 import zipfile
 from functools import lru_cache
@@ -12,6 +13,16 @@ EMBED_URL = (
 )
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 EDGE_TTS_SPEC = "edge-tts==7.2.7"
+
+
+def _get_subprocess_flags():
+    """Get subprocess creation flags to hide console windows on Windows."""
+    if sys.platform == "win32":
+        # On Windows, use CREATE_NO_WINDOW flag to prevent console window from appearing
+        # This is equivalent to the old STARTF_USESHOWWINDOW with SW_HIDE
+        # CREATE_NO_WINDOW = 0x08000000
+        return {"creationflags": 0x08000000}
+    return {}
 
 
 def _download(url: str, destination: str) -> None:
@@ -32,7 +43,7 @@ def _ensure_import_site(python_dir: str) -> None:
     ]
     for pth_name in pth_files:
         pth_path = os.path.join(python_dir, pth_name)
-        with open(pth_path, "r", encoding="utf-8") as handle:
+        with open(pth_path, encoding="utf-8") as handle:
             lines = handle.read().splitlines()
         if any(line.strip() == "import site" for line in lines):
             continue
@@ -50,6 +61,7 @@ def _ensure_get_pip(python_exe: str, cache_dir: str) -> str:
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        **_get_subprocess_flags(),
     )
     return script_path
 
@@ -61,6 +73,7 @@ def _python_can_import(python_exe: str, module: str) -> bool:
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            **_get_subprocess_flags(),
         )
         return True
     except subprocess.CalledProcessError:
@@ -87,6 +100,7 @@ def get_external_python(addon_dir: str) -> str:
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            **_get_subprocess_flags(),
         )
 
     if not _python_can_import(python_exe, "edge_tts"):
@@ -95,6 +109,7 @@ def get_external_python(addon_dir: str) -> str:
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            **_get_subprocess_flags(),
         )
 
     return python_exe
