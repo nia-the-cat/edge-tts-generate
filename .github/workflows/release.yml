@@ -1,0 +1,83 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0 or v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases and tags
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tagging
+
+      - name: Normalize version
+        id: normalize
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Remove 'v' prefix if present, then add it back for consistency
+          VERSION="${VERSION#v}"
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_clean=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        run: |
+          if git rev-parse "${{ steps.normalize.outputs.version }}" >/dev/null 2>&1; then
+            echo "Error: Tag ${{ steps.normalize.outputs.version }} already exists"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.normalize.outputs.version }}" -m "Release ${{ steps.normalize.outputs.version }}"
+          git push origin "${{ steps.normalize.outputs.version }}"
+
+      - name: Create .ankiaddon package
+        run: |
+          # Clean and create a temporary directory for the package contents
+          rm -rf build
+          mkdir -p build
+          
+          # Copy all add-on files (Python files and JSON configs, excluding .git, .github, build artifacts)
+          find . -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec cp {} build/ \;
+          
+          # Create the .ankiaddon file (which is just a zip file)
+          cd build
+          zip -r ../edge-tts-generator.ankiaddon .
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.normalize.outputs.version }}
+          name: Release ${{ steps.normalize.outputs.version }}
+          body: |
+            ## EdgeTTS Audio Generator ${{ steps.normalize.outputs.version }}
+            
+            ### Installation
+            
+            1. Download the `edge-tts-generator.ankiaddon` file below
+            2. In Anki, go to `Tools` → `Add-ons` → `Install from file...`
+            3. Select the downloaded `.ankiaddon` file
+            4. Restart Anki to activate the add-on
+            
+            ### What's Changed
+            
+            <!-- Add release notes here -->
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/commits/${{ steps.normalize.outputs.version }}
+          files: edge-tts-generator.ankiaddon
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
