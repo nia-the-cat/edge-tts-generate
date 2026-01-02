@@ -5,9 +5,7 @@ def on_browser_will_show_context_menu(browser: browser.Browser, menu: qt.QMenu):
     from . import edge_tts_gen
 
     menu.addSeparator()
-    menu.addAction(
-        "Generate edge-tts Audio", lambda: edge_tts_gen.onEdgeTTSOptionSelected(browser)
-    )
+    menu.addAction("Generate edge-tts Audio", lambda: edge_tts_gen.onEdgeTTSOptionSelected(browser))
 
 
 def on_browser_menus_did_init(browser: browser.Browser):

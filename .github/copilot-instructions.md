@@ -36,6 +36,76 @@ The add-on uses an isolated Python environment to avoid conflicts with Anki's bu
 
 This architecture keeps dependencies isolated from Anki's Python installation.
 
+## Linting and Testing
+
+### Running Linters
+
+This project uses **ruff** for linting and formatting. All code must pass linting before being merged.
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run linter (check for errors)
+ruff check .
+
+# Run linter with auto-fix
+ruff check . --fix
+
+# Check formatting
+ruff format --check .
+
+# Auto-format code
+ruff format .
+```
+
+### Running Tests
+
+This project uses **pytest** for testing. Configuration is in `pyproject.toml`.
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=. --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_external_runtime.py
+
+# Run tests matching a pattern
+pytest -k "test_python_version"
+
+# Run tests with verbose output
+pytest -v --tb=long
+```
+
+### Linting Rules
+
+The project enforces these ruff rule sets (configured in `pyproject.toml`):
+
+- **E/W**: pycodestyle errors and warnings
+- **F**: pyflakes
+- **I**: isort (import sorting)
+- **B**: flake8-bugbear
+- **C4**: flake8-comprehensions
+- **UP**: pyupgrade (modern Python syntax)
+- **SIM**: flake8-simplify
+- **RUF**: Ruff-specific rules
+- **PT**: flake8-pytest-style
+- **PIE**: flake8-pie
+- **PL**: pylint
+- **PERF**: perflint
+
+### Code Style Guidelines
+
+- Line length: 120 characters
+- Use double quotes for strings
+- Use modern Python syntax (e.g., `list[str]` instead of `List[str]`)
+- Use `capture_output=True` instead of `stdout=PIPE, stderr=PIPE`
+- Chain exceptions with `from exc` in except blocks
+- Remove unnecessary encoding arguments (e.g., `.encode()` instead of `.encode("utf-8")`)
+
 ## Code Conventions
 
 ### UI Components
@@ -67,6 +137,13 @@ This architecture keeps dependencies isolated from Anki's Python installation.
 - **edge-tts==7.2.7**: Microsoft Edge TTS library (installed in isolated Python 3.14 environment)
 - Downloaded automatically on first use
 
+### Test Dependencies (requirements-test.txt)
+
+- **pytest>=8.0.0**: Test framework
+- **pytest-asyncio>=0.23.0**: Async test support
+- **pytest-cov>=5.0.0**: Coverage reporting
+- **ruff>=0.8.0**: Linter and formatter
+
 ### Anki Integration
 
 - Minimum Anki version: Point version 35
@@ -83,11 +160,13 @@ This architecture keeps dependencies isolated from Anki's Python installation.
 3. **Error Handling**: Include helpful error messages with links to GitHub issues
 4. **UI Changes**: Follow existing PyQt patterns used in the codebase
 5. **External Runtime**: Do not modify the runtime bootstrap logic unless absolutely necessary
+6. **Linting**: Always run `ruff check .` and `ruff format .` before committing
 
 ### Testing Considerations
 
-- This is an Anki add-on - testing requires Anki environment
-- Manual testing is typically done within Anki's add-on system
+- This is an Anki add-on - testing requires Anki environment mocking
+- Tests use `conftest.py` to mock Anki modules
+- Run tests locally with `pytest` before pushing
 - Test with multiple note types to verify field handling
 - Test batch processing with multiple selected cards
 
@@ -111,6 +190,20 @@ This architecture keeps dependencies isolated from Anki's Python installation.
 2. Follow existing patterns for dialogs and field selection
 3. Persist user preferences in `meta.json` via Anki's config system
 
+## CI/CD
+
+The project uses GitHub Actions for CI. See `.github/workflows/`:
+
+- **tests.yml**: Runs tests across Python 3.9-3.13 on Linux, macOS, and Windows
+- **build.yml**: Builds the `.ankiaddon` package
+
+All PRs must pass:
+- Unit tests across all Python versions
+- Linting with ruff (no warnings or errors)
+- Format checking with ruff
+- JSON validation for config files
+- Integration tests
+
 ## Key Reminders
 
 - ✅ Python 3.14.2 is the correct version - DO NOT CHANGE IT
@@ -118,4 +211,6 @@ This architecture keeps dependencies isolated from Anki's Python installation.
 - ✅ Support multiple languages and voices
 - ✅ Maintain compatibility with specified Anki versions
 - ✅ Follow Anki add-on best practices
+- ✅ Run linters before committing: `ruff check . && ruff format .`
+- ✅ Run tests before pushing: `pytest`
 - ❌ **DO NOT take screenshots to show results** - describe changes in text only

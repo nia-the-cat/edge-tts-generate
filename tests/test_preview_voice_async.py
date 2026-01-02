@@ -81,11 +81,7 @@ class TestPreviewVoiceAsync:
 
         # Simulate error handling in on_preview_done
         taskman.run_on_main(
-            lambda: message_box.critical(
-                None,
-                "Preview Error",
-                f"Failed to generate preview: {error_msg}"
-            )
+            lambda: message_box.critical(None, "Preview Error", f"Failed to generate preview: {error_msg}")
         )
 
         # Verify error was handled

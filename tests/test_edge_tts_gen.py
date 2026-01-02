@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
 # Test the logic patterns used in edge_tts_gen without importing the module directly
 # (due to relative import issues when testing outside Anki)
 
