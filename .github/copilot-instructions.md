@@ -393,13 +393,17 @@ except Exception as exc:
 
 ### Test Organization
 
-- `tests/test_edge_tts_gen.py` - UI dialog and main logic
+The test suite is focused on high-value tests that verify actual module code:
+
+- `tests/test_bundled_tts.py` - TTS dataclasses (TTSConfig, TTSItem, TTSResult), vendor setup
+- `tests/test_async_synthesis.py` - Async batch synthesis, concurrency, timeout handling
+- `tests/test_synthesize_single.py` - Single-text synthesis function
+- `tests/test_dataclasses_and_helpers.py` - ItemError, BatchAudioResult, text processing
 - `tests/test_generate_audio_batch.py` - GenerateAudioBatch error handling
 - `tests/test_integration.py` - End-to-end integration tests
-- `tests/test_preview_note_selection.py` - Preview note selection UI
-- `tests/test_preview_voice_async.py` - Voice preview async behavior
-- `tests/test_logging_config.py` - Logging configuration tests
-- `tests/test_user_preference_retention.py` - User preference persistence across Anki sessions
+- `tests/test_logging_config.py` - Logging configuration
+- `tests/test_module_init.py` - Module structure, config file validation
+- `tests/test_vendor_setup.py` - Vendor path setup and edge_tts import
 
 ### Mocking Strategy
 
@@ -409,7 +413,6 @@ except Exception as exc:
 
 **TTS Module:**
 - Mock `synthesize_batch` to avoid actual TTS generation in tests
-- Use fixtures for consistent test data
 - Use fixtures for consistent test data
 
 ### Test Coverage Goals
