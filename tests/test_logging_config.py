@@ -6,8 +6,6 @@ Verifies that the logging system is properly configured and functions correctly.
 import importlib.util
 import logging
 import os
-import tempfile
-from unittest.mock import MagicMock, patch
 
 
 _MODULE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logging_config.py")
