@@ -80,7 +80,9 @@ async def _synthesize_text(text: str, config: TTSConfig) -> bytes:
     for attempt in range(config.stream_timeout_retries + 1):
         try:
             return await asyncio.wait_for(_collect_audio(), timeout=config.stream_timeout)
-        except TimeoutError as exc:
+        except asyncio.TimeoutError as exc:
+            # Note: In Python 3.9-3.10, asyncio.TimeoutError is distinct from builtin TimeoutError.
+            # asyncio.wait_for raises asyncio.TimeoutError specifically.
             if attempt == config.stream_timeout_retries:
                 raise RuntimeError(f"Timed out after {config.stream_timeout} seconds while streaming audio") from exc
     # This should never be reached, but satisfy type checker
@@ -88,7 +90,10 @@ async def _synthesize_text(text: str, config: TTSConfig) -> bytes:
 
 
 async def _synthesize_batch_async(items: list[TTSItem], config: TTSConfig) -> list[TTSResult]:
-    """Synthesize a batch of items asynchronously."""
+    """Synthesize a batch of items asynchronously.
+
+    Results are returned in the same order as the input items.
+    """
     semaphore = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
 
     async def synthesize_with_limit(item: TTSItem) -> TTSResult:
@@ -108,8 +113,8 @@ async def _synthesize_batch_async(items: list[TTSItem], config: TTSConfig) -> li
                 return TTSResult(identifier=item.identifier, error=str(exc))
 
     tasks = [synthesize_with_limit(item) for item in items]
-    results = await asyncio.gather(*tasks)
-    return sorted(results, key=lambda r: r.identifier)
+    # asyncio.gather preserves the order of tasks, so results match input order
+    return await asyncio.gather(*tasks)
 
 
 def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:

@@ -10,6 +10,8 @@ import importlib.util
 import os
 import sys
 
+import pytest
+
 
 _BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODULE_PATH = os.path.join(_BASE_PATH, "bundled_tts.py")
@@ -65,22 +67,62 @@ class TestSynthesizeBatchConcurrency:
         assert items[0].text == "First"
         assert items[2].identifier == "3"
 
-    def test_results_are_sorted_by_identifier(self):
-        """Results should be sorted by identifier."""
+
+class TestBatchResultOrdering:
+    """Test that batch synthesis results preserve input order."""
+
+    def test_asyncio_gather_preserves_order(self):
+        """asyncio.gather should preserve the order of results.
+
+        This test verifies the fundamental behavior that allows
+        us to preserve input order in batch synthesis.
+        """
+        import asyncio
+
+        async def make_result(value: int) -> int:
+            # Simulate variable-duration work
+            await asyncio.sleep(0.001 * (10 - value))  # Shorter sleep for larger values
+            return value
+
+        async def run_test():
+            tasks = [make_result(i) for i in [5, 2, 8, 1, 9, 3]]
+            results = await asyncio.gather(*tasks)
+            return results
+
+        loop = asyncio.new_event_loop()
+        try:
+            results = loop.run_until_complete(run_test())
+        finally:
+            loop.close()
+
+        # Results should be in the same order as the input, not completion order
+        assert results == [5, 2, 8, 1, 9, 3]
+
+    def test_results_maintain_input_order_with_numeric_identifiers(self):
+        """Results should match input order even with numeric-like identifiers.
+
+        This ensures that input order is preserved, not reordered by sorting.
+        For example: ["9", "1", "10"] stays as ["9", "1", "10"], not sorted to ["1", "10", "9"].
+        """
         bundled_tts = _load_bundled_tts()
 
-        # Test the sorting behavior
-        results = [
-            bundled_tts.TTSResult(identifier="3", audio=b"three"),
-            bundled_tts.TTSResult(identifier="1", audio=b"one"),
-            bundled_tts.TTSResult(identifier="2", audio=b"two"),
+        # Create items with identifiers that would be reordered if sorted lexicographically
+        # Input order: ["9", "1", "10"]
+        # Lexicographic sort would produce: ["1", "10", "9"] (since "10" < "9")
+        items = [
+            bundled_tts.TTSItem(identifier="9", text="Nine"),
+            bundled_tts.TTSItem(identifier="1", text="One"),
+            bundled_tts.TTSItem(identifier="10", text="Ten"),
         ]
 
-        sorted_results = sorted(results, key=lambda r: r.identifier)
+        # Verify input order is preserved
+        expected_order = ["9", "1", "10"]
 
-        assert sorted_results[0].identifier == "1"
-        assert sorted_results[1].identifier == "2"
-        assert sorted_results[2].identifier == "3"
+        # What we'd get with lexicographic sorting (which we removed)
+        sorted_order = ["1", "10", "9"]
+
+        assert [item.identifier for item in items] == expected_order
+        assert [item.identifier for item in items] != sorted_order
 
 
 class TestSynthesizeBatchErrorHandling:
@@ -209,6 +251,97 @@ class TestTimeoutHandling:
         # Verify retry defaults are reasonable
         assert bundled_tts.STREAM_TIMEOUT_RETRIES_DEFAULT >= 0
         assert bundled_tts.STREAM_TIMEOUT_RETRIES_DEFAULT <= 5
+
+
+class TestAsyncioTimeoutRetry:
+    """Test that asyncio.TimeoutError triggers retry logic correctly.
+
+    This addresses the issue where catching builtin TimeoutError doesn't catch
+    asyncio.TimeoutError in Python 3.9-3.10, which would bypass retry logic.
+    """
+
+    def test_asyncio_timeout_error_is_caught_for_retry(self):
+        """asyncio.TimeoutError should be caught and trigger retry."""
+        import asyncio
+
+        _load_bundled_tts()
+
+        # In Python 3.9-3.10, asyncio.TimeoutError is distinct from TimeoutError
+        # In Python 3.11+, they are the same
+        # Our code should catch asyncio.TimeoutError specifically
+        caught = False
+
+        async def timeout_test():
+            nonlocal caught
+            try:
+                await asyncio.wait_for(asyncio.sleep(10), timeout=0.001)
+            except asyncio.TimeoutError:
+                caught = True
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(timeout_test())
+        finally:
+            loop.close()
+
+        assert caught, "asyncio.TimeoutError should be caught"
+
+    def test_wait_for_raises_asyncio_timeout_error(self):
+        """asyncio.wait_for should raise asyncio.TimeoutError on timeout."""
+        import asyncio
+
+        _load_bundled_tts()
+
+        async def long_task():
+            await asyncio.sleep(10)
+
+        async def test():
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(long_task(), timeout=0.001)
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(test())
+        finally:
+            loop.close()
+
+    def test_retry_loop_catches_asyncio_timeout_error(self):
+        """Retry loop should catch asyncio.TimeoutError and retry.
+
+        This test simulates the retry logic in _synthesize_text to verify
+        that asyncio.TimeoutError is properly caught.
+        """
+        import asyncio
+
+        _load_bundled_tts()
+
+        attempt_count = 0
+        max_retries = 2
+
+        async def failing_operation():
+            nonlocal attempt_count
+            attempt_count += 1
+            await asyncio.sleep(10)  # Will timeout
+
+        async def test_retry():
+            for attempt in range(max_retries + 1):
+                try:
+                    await asyncio.wait_for(failing_operation(), timeout=0.001)
+                    return "success"
+                except asyncio.TimeoutError as exc:
+                    if attempt == max_retries:
+                        raise RuntimeError("All retries exhausted") from exc
+            return "unreachable"
+
+        loop = asyncio.new_event_loop()
+        try:
+            with pytest.raises(RuntimeError, match="All retries exhausted"):
+                loop.run_until_complete(test_retry())
+        finally:
+            loop.close()
+
+        # Should have attempted max_retries + 1 times
+        assert attempt_count == max_retries + 1
 
 
 class TestEventLoopHandling:

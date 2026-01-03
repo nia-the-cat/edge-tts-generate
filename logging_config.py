@@ -62,25 +62,30 @@ def configure_logging(
     """
     Configure the logging system for the add-on.
 
+    If logging has already been configured, this function updates the log level
+    for the root logger and all existing handlers, allowing user preferences
+    to take effect even if logging was initialized before the config was loaded.
+
     Args:
         log_level: The minimum log level to record (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         max_log_size_mb: Maximum size of each log file in MB before rotation
         backup_count: Number of backup log files to keep
     """
-    if _state.handler_configured:
+    level = _get_log_level(log_level)
+    root_logger = logging.getLogger("edge_tts_generate")
+
+    # If already configured, just update the log level and return
+    if _state.handler_configured or root_logger.handlers:
+        root_logger.setLevel(level)
+        for handler in root_logger.handlers:
+            handler.setLevel(level)
+        _state.handler_configured = True
         return
 
     log_path = _get_addon_log_path()
-    level = _get_log_level(log_level)
 
-    # Create the root logger for the add-on
-    root_logger = logging.getLogger("edge_tts_generate")
+    # Set the log level on the root logger
     root_logger.setLevel(level)
-
-    # Avoid adding duplicate handlers
-    if root_logger.handlers:
-        _state.handler_configured = True
-        return
 
     # Create rotating file handler
     max_bytes = int(max_log_size_mb * 1024 * 1024)
