@@ -81,6 +81,7 @@ class MyDialog(qt.QDialog):
         self.browser = browser
         self.selected_notes = browser.selectedNotes()
         self.new_field_name = None  # Track if user wants to create a new field
+        self._preview_cache = None  # Cache for preview audio
 
         config = mw.addonManager.getConfig(__name__)
 
@@ -239,8 +240,10 @@ class MyDialog(qt.QDialog):
 
             # Connect to update when source field changes
             self.source_combo.currentIndexChanged.connect(self._populatePreviewNoteCombo)
+            self.source_combo.currentIndexChanged.connect(self._reset_preview_cache)
 
             self.grid_layout.addWidget(self.preview_note_combo, 3, 1, 1, 2)
+            self.preview_note_combo.currentIndexChanged.connect(self._reset_preview_cache)
 
         self.preview_voice_button = qt.QPushButton("Preview Voice", self)
         self.preview_voice_button.setToolTip(
@@ -276,6 +279,7 @@ class MyDialog(qt.QDialog):
                 label.setText(f"{slider_desc} {slider.value()}{slider_unit}")
                 config[config_name] = slider.value()
                 mw.addonManager.writeConfig(__name__, config)
+                self._reset_preview_cache()
 
             return update_this_slider
 
@@ -286,6 +290,7 @@ class MyDialog(qt.QDialog):
         volume_slider.setMinimum(-100)
         volume_slider.setMaximum(100)
         volume_slider.setValue(config.get("volume_slider_value") or 0)
+        self.volume_slider = volume_slider
 
         volume_label = QLabel(f"Volume scale {volume_slider.value()}%")
 
@@ -300,6 +305,7 @@ class MyDialog(qt.QDialog):
         pitch_slider.setMinimum(-50)
         pitch_slider.setMaximum(50)
         pitch_slider.setValue(config.get("pitch_slider_value") or 0)
+        self.pitch_slider = pitch_slider
 
         pitch_label = QLabel(f"Pitch scale {pitch_slider.value()}Hz")
 
@@ -314,6 +320,7 @@ class MyDialog(qt.QDialog):
         speed_slider.setMinimum(-50)
         speed_slider.setMaximum(50)
         speed_slider.setValue(config.get("speed_slider_value") or 0)
+        self.speed_slider = speed_slider
 
         speed_label = QLabel(f"Speed scale {speed_slider.value()}%")
 
@@ -327,6 +334,15 @@ class MyDialog(qt.QDialog):
         layout.addLayout(self.grid_layout)
 
         self.setLayout(layout)
+
+    def _reset_preview_cache(self):
+        self._preview_cache = None
+
+    def _get_preview_parameters(self):
+        pitch = f"{self.pitch_slider.value():+}Hz"
+        rate = f"{self.speed_slider.value():+}%"
+        volume = f"{self.volume_slider.value():+}%"
+        return pitch, rate, volume
 
     def onDestinationChanged(self, index):
         """Handle destination field dropdown change - prompt for new field name if 'Create new field' is selected"""
@@ -504,6 +520,26 @@ class MyDialog(qt.QDialog):
             )
             return
 
+        pitch, rate, volume = self._get_preview_parameters()
+        cache_key = (preview_text, speaker, pitch, rate, volume)
+
+        if self._preview_cache and self._preview_cache.get("key") == cache_key:
+            original_text = self.preview_voice_button.text()
+            self.preview_voice_button.setText("Playing cached preview...")
+            self.preview_voice_button.setEnabled(False)
+
+            def play_cached():
+                addon_path = dirname(__file__)
+                preview_path = join(addon_path, "edge_tts_preview.mp3")
+                with open(preview_path, "wb") as f:
+                    f.write(self._preview_cache.get("audio", b""))
+                av_player.play_file(preview_path)
+                self.preview_voice_button.setText(original_text)
+                self.preview_voice_button.setEnabled(True)
+
+            mw.taskman.run_on_main(play_cached)
+            return
+
         tup = (preview_text, speaker)
 
         # Disable button and show loading state during generation
@@ -523,6 +559,7 @@ class MyDialog(qt.QDialog):
 
             try:
                 result = future.result()
+                self._preview_cache = {"key": cache_key, "audio": result}
 
                 def play_preview():
                     """Write file and play audio on main thread"""
