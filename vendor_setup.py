@@ -25,4 +25,3 @@ def ensure_vendor_path() -> str:
         os.environ.setdefault(key, value)
 
     return vendor_dir
-
