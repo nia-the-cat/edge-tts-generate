@@ -142,6 +142,7 @@ All dependencies are bundled as pure Python packages:
 - **edge-tts==7.2.7**: Microsoft Edge TTS library
 - **aiohttp**: Async HTTP client
 - **aiohappyeyeballs, aiosignal**: aiohttp dependencies
+- **async_timeout**: Timeout support for asyncio (required by aiohttp on Python <3.11)
 - **attrs, frozenlist, multidict, propcache, yarl**: Core async utilities
 - **certifi**: SSL certificates
 - **tabulate**: Table formatting
