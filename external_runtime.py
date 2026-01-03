@@ -28,7 +28,9 @@ def _get_subprocess_flags():
     return {}
 
 
-def _download(url: str, destination: str, *, expected_hash: str | None = None, retries: int = 3, timeout: int = 30) -> None:
+def _download(
+    url: str, destination: str, *, expected_hash: str | None = None, retries: int = 3, timeout: int = 30
+) -> None:
     for attempt in range(1, retries + 1):
         try:
             if os.path.exists(destination):
@@ -47,7 +49,7 @@ def _download(url: str, destination: str, *, expected_hash: str | None = None, r
                     "The download may be corrupted or tampered with."
                 )
             return
-        except Exception as exc:  # noqa: BLE001 - we want to handle all errors for retries
+        except Exception as exc:
             if attempt == retries:
                 raise RuntimeError(f"Failed to download {url} after {retries} attempts") from exc
             # Remove partially downloaded files before retrying to avoid caching corrupt data

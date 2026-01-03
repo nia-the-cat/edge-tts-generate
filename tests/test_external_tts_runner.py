@@ -280,9 +280,7 @@ class TestSynthesizeFunction:
             attempts += 1
             return HangingTTS()
 
-        with patch.object(
-            external_tts_runner.edge_tts, "Communicate", side_effect=make_tts
-        ):
+        with patch.object(external_tts_runner.edge_tts, "Communicate", side_effect=make_tts):
             with pytest.raises(RuntimeError) as excinfo:
                 asyncio.run(external_tts_runner.synthesize_text("hello", args))
 

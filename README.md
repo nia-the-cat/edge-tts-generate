@@ -22,9 +22,9 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 
 # Requirements
 
-- **Python 3.14+** - The add-on requires Python 3.14 or later
 - Anki (versions with point version 35-231000)
-- Internet connection (for first-time Python runtime download and TTS generation)
+- Internet connection (for first-time setup and TTS generation)
+- **Platform**: Currently the automatic Python runtime download only supports Windows (amd64). macOS and Linux users would need manual setup.
 
 # Installation
 
@@ -87,18 +87,22 @@ Choose how to handle existing content in the destination field:
 
 #### 3. Voice Selection
 
-Choose from 20+ voices across multiple languages:
-- 🇺🇸 English (US, GB)
-- 🇩🇪 German
-- 🇪🇸 Spanish
-- 🇫🇷 French
-- 🇮🇹 Italian
-- 🇯🇵 Japanese
-- 🇰🇷 Korean
-- 🇧🇷 Portuguese (Brazilian)
-- 🇨🇳 Chinese (Simplified)
+The add-on comes with 20 pre-configured voices across 10 languages:
 
-**Preview Voice**: Click the "Preview Voice" button to hear the selected voice using text from your first selected note.
+| Language | Female Voice | Male Voice |
+|----------|-------------|------------|
+| 🇺🇸 English (US) | Jenny | Guy |
+| 🇬🇧 English (UK) | Sonia | Ryan |
+| 🇩🇪 German | Katja | Conrad |
+| 🇪🇸 Spanish | Elvira | Alvaro |
+| 🇫🇷 French | Denise | Henri |
+| 🇮🇹 Italian | Elsa | Diego |
+| 🇯🇵 Japanese | Nanami | Keita |
+| 🇰🇷 Korean | SunHi | InJoon |
+| 🇧🇷 Portuguese (BR) | Francisca | Antonio |
+| 🇨🇳 Chinese (Simplified) | Xiaoxiao | Yunxi |
+
+**Preview Voice**: Click the "Preview Voice" button to hear the selected voice. When multiple notes are selected, you can choose which note to use for the preview text.
 
 #### 4. Advanced Options
 
@@ -106,7 +110,9 @@ Choose from 20+ voices across multiple languages:
   - Useful for flashcards with pronunciation hints, pitch accents, or metadata
   - Example: `食べる [たべる]` becomes `食べる`
   
-* **Pitch, Speed, Volume Controls** - Fine-tune voice characteristics (accessible in some views)
+* **Pitch Control** - Adjust voice pitch from -50Hz to +50Hz
+* **Speed Control** - Adjust speaking rate from -50% to +50%
+* **Volume Control** - Adjust volume from -100% to +100%
 
 ### Generating Audio
 
@@ -146,7 +152,9 @@ Subsequent generations will be much faster as the runtime is cached.
 
 ## Configuration
 
-Add or modify voices by editing the add-on configuration:
+### Adding More Voices
+
+You can add additional voices by editing the add-on configuration:
 
 1. In Anki, go to `Tools` → `Add-ons`
 2. Select "EdgeTTS Audio Generator"
@@ -159,6 +167,15 @@ Add or modify voices by editing the add-on configuration:
 - `de-DE-KatjaNeural`
 
 See [Microsoft's voice documentation](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts) for a full list of available voices.
+
+### Advanced Configuration
+
+The add-on also supports these configuration options in `meta.json`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `stream_timeout_seconds` | 30.0 | Timeout for TTS streaming (seconds) |
+| `stream_timeout_retries` | 1 | Number of retries on timeout |
 
 ## Contributing
 

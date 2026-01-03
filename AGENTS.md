@@ -282,6 +282,7 @@ The project uses GitHub Actions for CI. See `.github/workflows/`:
 - **tests.yml**: Runs tests on Python 3.14 across Linux, macOS, and Windows
 - **build.yml**: Builds the `.ankiaddon` package and creates releases for git tags
 - **release.yml**: Manual release workflow for repository owner to create releases (workflow_dispatch)
+- **sync-agents-docs.yml**: Syncs `.github/copilot-instructions.md` to `AGENTS.md` on commits to main
 
 All PRs must pass:
 - Unit tests on Python 3.14
@@ -373,7 +374,9 @@ except Exception as exc:
 - `tests/test_edge_tts_gen.py` - UI dialog and main logic
 - `tests/test_external_runtime.py` - Python runtime bootstrap logic
 - `tests/test_external_tts_runner.py` - External script and TTS generation
+- `tests/test_generate_audio_batch.py` - GenerateAudioBatch error handling
 - `tests/test_integration.py` - End-to-end integration tests
+- `tests/test_preview_note_selection.py` - Preview note selection UI
 - `tests/test_preview_voice_async.py` - Voice preview async behavior
 - `tests/test_subprocess_flags.py` - Platform-specific subprocess handling
 
@@ -440,7 +443,7 @@ except Exception as exc:
 
 ### UI Responsiveness
 
-- Voice preview runs asynchronously using `QThreadPool` and `QRunnable`
+- Voice preview runs asynchronously using Anki's `mw.taskman.run_in_background()`
 - Preview button disabled during generation to prevent multiple concurrent requests
 - Audio generation shows progress (though currently synchronous)
 
