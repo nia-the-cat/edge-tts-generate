@@ -63,7 +63,7 @@ def getCommonFields(selected_notes):
         note = mw.col.get_note(note_id)
         if note is None:
             raise Exception(
-                f"Note with id {note_id} is None.\nNotes: {','.join([mw.col.get_note(id) for id in selected_notes])}.\nPlease submit an issue with more information about what cards caused this at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+                f"Note with id {note_id} is None.\nSelected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\nPlease submit an issue with more information about what cards caused this at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
             )
         model = note.note_type()
         model_fields = {f["name"] for f in model["flds"]}
@@ -123,7 +123,7 @@ class MyDialog(qt.QDialog):
         source_field_index = 0
         destination_field_index = 0
         i = 0
-        for field in self.common_fields:
+        for field in sorted(self.common_fields):
             if last_source_field is None:
                 if field.lower() == "expression" or field.lower() == "sentence":
                     source_field_index = i
