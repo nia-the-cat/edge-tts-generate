@@ -362,8 +362,8 @@ class MyDialog(qt.QDialog):
     def onDestinationChanged(self, index):
         """Handle destination field dropdown change - prompt for new field name if 'Create new field' is selected"""
         if self.destination_combo.itemText(index) == CREATE_NEW_FIELD_OPTION:
-            # Remember the previous selection before showing the dialog
-            previous_index = getattr(self, "_previous_destination_index", 0)
+            # Use the tracked previous selection before showing the dialog
+            previous_index = self._previous_destination_index
 
             field_name, ok = QInputDialog.getText(
                 self, "Create New Field", "Enter the name for the new audio field:", text="Audio"
@@ -753,8 +753,18 @@ def onEdgeTTSOptionSelected(browser):
 
         # Create the new field if needed (do this before saving config)
         if new_field_name:
-            addFieldToNoteTypes(new_field_name, dialog.selected_notes)
-            destination_field = new_field_name
+            try:
+                addFieldToNoteTypes(new_field_name, dialog.selected_notes)
+                destination_field = new_field_name
+            except Exception as exc:
+                logger.error("Failed to create new field '%s': %s", new_field_name, exc)
+                QMessageBox.critical(
+                    mw,
+                    "Field Creation Failed",
+                    f"Failed to create the new field '{new_field_name}':\n{exc}\n\n"
+                    "The field will not be created. Please try again or select an existing field.",
+                )
+                return
 
         # Save previously used stuff (save the actual destination field name, not the placeholder)
         config = mw.addonManager.getConfig(__name__)
