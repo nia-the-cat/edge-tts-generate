@@ -228,7 +228,7 @@ ruff format .
 
 ### Testing
 
-The project has comprehensive test coverage across all modules:
+The project has a focused test suite covering core functionality:
 
 ```bash
 # Run all tests
@@ -244,22 +244,19 @@ pytest tests/test_bundled_tts.py -v
 pytest tests/ -k "test_config"
 ```
 
-**Test Categories:**
+**Test Files:**
 
 | Test File | Coverage Area |
 |-----------|--------------|
-| `test_bundled_tts.py` | TTS dataclasses, synthesis utilities, vendor setup |
-| `test_dataclasses_and_helpers.py` | ItemError, BatchAudioResult, regex patterns |
-| `test_edge_tts_gen.py` | UI logic, field handling, audio modes |
+| `test_bundled_tts.py` | TTS dataclasses (TTSConfig, TTSItem, TTSResult), vendor setup |
+| `test_async_synthesis.py` | Async batch synthesis, concurrency, timeout handling |
 | `test_synthesize_single.py` | Single-text synthesis function |
-| `test_async_synthesis.py` | Async batch synthesis, concurrency |
-| `test_field_management.py` | Field creation, validation |
-| `test_module_init.py` | Module structure, config files |
-| `test_logging_config.py` | Logging configuration |
+| `test_dataclasses_and_helpers.py` | ItemError, BatchAudioResult, text processing |
+| `test_generate_audio_batch.py` | GenerateAudioBatch error handling |
 | `test_integration.py` | End-to-end integration tests |
-| `test_preview_*.py` | Voice preview functionality |
-| `test_issue_fixes.py` | Regression tests for bug fixes |
-| `test_user_preference_retention.py` | User settings persistence across Anki sessions |
+| `test_logging_config.py` | Logging configuration |
+| `test_module_init.py` | Module structure, config file validation |
+| `test_vendor_setup.py` | Vendor path setup and edge_tts import
 
 ### CI/CD Pipeline
 
@@ -297,7 +294,7 @@ The add-on bundles all dependencies (edge-tts, aiohttp, etc.) in a `vendor` dire
 - `edge_tts_gen.py` - Main UI and audio generation orchestration  
 - `logging_config.py` - Configurable logging system
 - `vendor/` - Bundled pure-Python dependencies (edge-tts, aiohttp, certifi, etc.)
-- `tests/` - Comprehensive test suite with ~290 tests
+- `tests/` - Focused test suite with ~180 high-value tests
 
 ### AI Development Guidelines
 
