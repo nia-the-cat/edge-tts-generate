@@ -267,27 +267,27 @@ class TestPreviewNoteComboLayout:
     def test_cancel_generate_buttons_row_for_single_note(self):
         """Cancel/Generate buttons should be on row 3 for single note."""
         selected_notes = [123]
-        button_row = 3 if len(selected_notes) <= 1 else 5
+        button_row = 3 if len(selected_notes) <= 1 else 4
 
         assert button_row == 3
 
     def test_cancel_generate_buttons_row_for_multiple_notes(self):
-        """Cancel/Generate buttons should be on row 5 for multiple notes."""
+        """Cancel/Generate buttons should be on row 4 for multiple notes."""
         selected_notes = [101, 102, 103]
-        button_row = 3 if len(selected_notes) <= 1 else 5
+        button_row = 3 if len(selected_notes) <= 1 else 4
 
-        assert button_row == 5
+        assert button_row == 4
 
     def test_slider_base_row_for_single_note(self):
         """Sliders should start at row 4 for single note."""
         selected_notes = [123]
-        slider_base_row = 4 if len(selected_notes) <= 1 else 6
+        slider_base_row = 4 if len(selected_notes) <= 1 else 5
 
         assert slider_base_row == 4
 
     def test_slider_base_row_for_multiple_notes(self):
-        """Sliders should start at row 6 for multiple notes."""
+        """Sliders should start at row 5 for multiple notes."""
         selected_notes = [101, 102, 103]
-        slider_base_row = 4 if len(selected_notes) <= 1 else 6
+        slider_base_row = 4 if len(selected_notes) <= 1 else 5
 
-        assert slider_base_row == 6
+        assert slider_base_row == 5

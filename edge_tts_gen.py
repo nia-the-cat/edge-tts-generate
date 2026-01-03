@@ -266,11 +266,9 @@ class MyDialog(qt.QDialog):
         )
 
         self.preview_voice_button.clicked.connect(self.PreviewVoice)
-        self.grid_layout.addWidget(
-            self.preview_voice_button,
-            3 if len(self.selected_notes) <= 1 else 4,
-            4 if len(self.selected_notes) <= 1 else 0,
-        )
+        # Place preview button on the speaker row (row 2, col 4) for all cases
+        # This avoids overlap with Generate button and logically groups preview with speaker selection
+        self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
 
         self.cancel_button = qt.QPushButton("Cancel")
         self.generate_button = qt.QPushButton("Generate Audio")
@@ -279,7 +277,8 @@ class MyDialog(qt.QDialog):
         self.generate_button.clicked.connect(self.pre_accept)
 
         # Position buttons on the appropriate row based on whether preview note selector is shown
-        button_row = 3 if len(self.selected_notes) <= 1 else 5
+        # Row 3 for single note (after speaker row), Row 4 for multiple notes (after preview note combo)
+        button_row = 3 if len(self.selected_notes) <= 1 else 4
         self.grid_layout.addWidget(self.cancel_button, button_row, 0, 1, 2)
         self.grid_layout.addWidget(self.generate_button, button_row, 3, 1, 2)
 
@@ -299,7 +298,8 @@ class MyDialog(qt.QDialog):
             return update_this_slider
 
         # Calculate base row for sliders based on whether preview note selector is shown
-        slider_base_row = 4 if len(self.selected_notes) <= 1 else 6
+        # Row 4 for single note, Row 5 for multiple notes (after Cancel/Generate buttons)
+        slider_base_row = 4 if len(self.selected_notes) <= 1 else 5
 
         volume_slider = QSlider(qt.Qt.Orientation.Horizontal)
         volume_slider.setMinimum(-100)
