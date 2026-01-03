@@ -36,8 +36,7 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
         payload = json.load(handle)
 
     items = payload.get("items", [])
-    identifiers: list[str] = []
-    tasks: list[asyncio.Task[bytes]] = []
+    queued_items: list[tuple[str, asyncio.Task[bytes]]] = []
 
     semaphore = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
 
@@ -47,20 +46,29 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
 
     for item in items:
         text = item.get("text", "")
-        identifiers.append(str(item.get("id", "")))
-        tasks.append(asyncio.create_task(synthesize_with_limit(text)))
+        identifier = str(item.get("id", ""))
+        queued_items.append((identifier, asyncio.create_task(synthesize_with_limit(text))))
 
-    audio_results = await asyncio.gather(*tasks, return_exceptions=True)
+    audio_results = await asyncio.gather(
+        *(task for _, task in queued_items), return_exceptions=True
+    )
 
-    for result in audio_results:
+    paired_results = sorted(
+        zip((identifier for identifier, _ in queued_items), audio_results, strict=True),
+        key=lambda pair: pair[0],
+    )
+
+    results: list[dict[str, str]] = []
+
+    for identifier, result in paired_results:
         if isinstance(result, Exception):
-            raise RuntimeError("Failed to synthesize text in batch") from result
+            results.append({"id": identifier, "error": str(result)})
+        else:
+            results.append(
+                {"id": identifier, "audio": base64.b64encode(result).decode("ascii")}
+            )
 
-    ordered_results = sorted(zip(identifiers, audio_results, strict=True), key=lambda pair: pair[0])
-    return [
-        {"id": identifier, "audio": base64.b64encode(audio_bytes).decode("ascii")}
-        for identifier, audio_bytes in ordered_results
-    ]
+    return results
 
 
 def main() -> int:
