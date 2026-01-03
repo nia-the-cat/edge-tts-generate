@@ -264,13 +264,13 @@ The add-on processes text in this order:
 
 The project uses GitHub Actions for CI. See `.github/workflows/`:
 
-- **tests.yml**: Runs tests on Python 3.12 across Linux, macOS, and Windows
+- **tests.yml**: Runs tests on Python 3.9 (minimum Anki-supported version) across Linux, macOS, and Windows
 - **build.yml**: Builds the `.ankiaddon` package and creates releases for git tags
 - **release.yml**: Manual release workflow for repository owner to create releases (workflow_dispatch)
 - **sync-agents-docs.yml**: Syncs `.github/copilot-instructions.md` to `AGENTS.md` on commits to main
 
 All PRs must pass:
-- Unit tests on Python 3.12
+- Unit tests on Python 3.9
 - Linting with ruff (no warnings or errors)
 - Format checking with ruff
 - JSON validation for config files

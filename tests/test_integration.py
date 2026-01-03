@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 
 import pytest
 
@@ -16,6 +17,8 @@ def _load_module(module_name, module_path):
     """Load a module from file without adding to sys.path."""
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
+    # Register in sys.modules so dataclasses and other features work
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -112,6 +115,18 @@ class TestBundledTTSModule:
 
     def test_bundled_tts_imports(self):
         """bundled_tts.py should have expected structure."""
+        # Add vendor directory to path first (like bundled_tts does)
+        vendor_path = os.path.join(_base_path, "vendor")
+        if vendor_path not in sys.path:
+            sys.path.insert(0, vendor_path)
+
+        # Set environment variables for pure Python mode
+        os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
+        os.environ["FROZENLIST_NO_EXTENSIONS"] = "1"
+        os.environ["MULTIDICT_NO_EXTENSIONS"] = "1"
+        os.environ["YARL_NO_EXTENSIONS"] = "1"
+        os.environ["PROPCACHE_NO_EXTENSIONS"] = "1"
+
         bundled_tts = _load_module("bundled_tts", os.path.join(_base_path, "bundled_tts.py"))
 
         # Check key classes and functions exist
