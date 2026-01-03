@@ -1,0 +1,55 @@
+name: Sync AGENTS.md
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '.github/copilot-instructions.md'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - '.github/copilot-instructions.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-docs:
+    name: Mirror Copilot Instructions to AGENTS.md
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy copilot-instructions.md to AGENTS.md
+        run: |
+          cp .github/copilot-instructions.md AGENTS.md
+          echo "✓ Copied .github/copilot-instructions.md to AGENTS.md"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet AGENTS.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in AGENTS.md"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in AGENTS.md"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true' && github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AGENTS.md
+          git commit -m "docs: sync AGENTS.md from copilot-instructions.md [skip ci]"
+          git push
