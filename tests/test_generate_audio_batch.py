@@ -27,7 +27,7 @@ def _load_edge_tts_gen():
 
 
 def test_generate_audio_batch_reports_item_errors(monkeypatch):
-    """An error entry in the batch result should raise an item-specific exception."""
+    """An error entry in the batch result should be returned for caller handling."""
 
     edge_tts_gen = _load_edge_tts_gen()
 
@@ -42,10 +42,11 @@ def test_generate_audio_batch_reports_item_errors(monkeypatch):
 
     monkeypatch.setattr(edge_tts_gen.subprocess, "run", lambda *args, **kwargs: mock_completed)
 
-    with pytest.raises(Exception) as excinfo:
-        edge_tts_gen.GenerateAudioBatch([("note-123", "text", "voice")], {})
+    result = edge_tts_gen.GenerateAudioBatch([("note-123", "text", "voice")], {})
 
-    assert "note-123" in str(excinfo.value)
-    assert "Service unavailable" in str(excinfo.value)
-    assert "note-456" in str(excinfo.value)
-    assert "Missing audio data" in str(excinfo.value)
+    assert result.audio_map == {}
+    assert len(result.item_errors) == 2
+    assert result.item_errors[0].identifier == "note-123"
+    assert result.item_errors[0].reason == "Service unavailable"
+    assert result.item_errors[1].identifier == "note-456"
+    assert "Missing audio data" in result.item_errors[1].reason

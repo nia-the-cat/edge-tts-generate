@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from dataclasses import dataclass
 from os.path import dirname, exists, join
 
 from aqt import mw, qt
@@ -30,6 +31,18 @@ ENTITY_RE = re.compile(r"(&[^;]+;)")
 BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
 BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
 WHITESPACE_RE = re.compile(" ")
+
+
+@dataclass
+class ItemError:
+    identifier: str
+    reason: str
+
+
+@dataclass
+class BatchAudioResult:
+    audio_map: dict[str, bytes]
+    item_errors: list[ItemError]
 
 
 def _get_subprocess_flags():
@@ -584,7 +597,7 @@ class MyDialog(qt.QDialog):
 
 def GenerateAudioBatch(text_speaker_items, config):
     if not text_speaker_items:
-        return {}
+        return BatchAudioResult(audio_map={}, item_errors=[])
 
     addon_dir = dirname(__file__)
 
@@ -654,38 +667,46 @@ def GenerateAudioBatch(text_speaker_items, config):
     except json.JSONDecodeError as exc:
         raise Exception(f"Failed to parse audio generation result: {exc}") from exc
 
-    audio_map = {}
-    item_errors: list[str] = []
+    audio_map: dict[str, bytes] = {}
+    item_errors: list[ItemError] = []
 
     for item in decoded_results:
         identifier = str(item.get("id", "")) or "<unknown>"
         if "error" in item:
             error_reason = item.get("error") or "Unknown error"
-            item_errors.append(f"{identifier}: {error_reason}")
+            item_errors.append(ItemError(identifier=identifier, reason=error_reason))
             continue
 
         audio_b64 = item.get("audio")
         if not audio_b64:
-            item_errors.append(f"{identifier}: Missing audio data in response")
+            item_errors.append(
+                ItemError(identifier=identifier, reason="Missing audio data in response")
+            )
             continue
 
         try:
             audio_map[identifier] = base64.b64decode(audio_b64)
         except Exception as exc:
-            raise Exception(f"Failed to decode audio data for item {identifier}: {exc}") from exc
+            item_errors.append(
+                ItemError(identifier=identifier, reason=f"Failed to decode audio: {exc}")
+            )
 
-    if item_errors:
-        error_summary = "\n".join(f"- {error}" for error in item_errors)
-        raise Exception(f"Audio generation failed for the following items:\n{error_summary}")
-
-    return audio_map
+    return BatchAudioResult(audio_map=audio_map, item_errors=item_errors)
 
 
 def GenerateAudioQuery(text_and_speaker_tuple, config):
     text = text_and_speaker_tuple[0]
     voice = text_and_speaker_tuple[1]
     batch_result = GenerateAudioBatch([(0, text, voice)], config)
-    return batch_result.get("0", b"")
+    if batch_result.item_errors:
+        error = batch_result.item_errors[0]
+        raise Exception(f"Audio generation failed for preview item {error.identifier}: {error.reason}")
+
+    audio_bytes = batch_result.audio_map.get("0")
+    if audio_bytes is None:
+        raise Exception("Preview audio missing from batch result")
+
+    return audio_bytes
 
 
 def addFieldToNoteTypes(field_name, selected_notes):
@@ -852,6 +873,7 @@ def onEdgeTTSOptionSelected(browser):
                 return
 
             canceled = False
+            failures: list[str] = []
             for chunk_start in range(0, len(pending_items), chunk_size):
                 if mw.progress.want_cancel():
                     break
@@ -859,13 +881,27 @@ def onEdgeTTSOptionSelected(browser):
                 chunk_items = pending_items[chunk_start : chunk_start + chunk_size]
                 chunk_note_ids = pending_note_ids[chunk_start : chunk_start + chunk_size]
 
-                audio_map = GenerateAudioBatch(chunk_items, config)
+                batch_result = GenerateAudioBatch(chunk_items, config)
+                error_lookup = {error.identifier: error.reason for error in batch_result.item_errors}
 
                 for note_id in chunk_note_ids:
                     notes_so_far += 1
-                    audio_data = audio_map.get(str(note_id))
+                    identifier = str(note_id)
+                    audio_data = batch_result.audio_map.get(identifier)
+                    if identifier in error_lookup:
+                        failures.append(f"{identifier}: {error_lookup[identifier]}")
+                        updateProgress(notes_so_far, total_notes, skipped_count)
+                        if mw.progress.want_cancel():
+                            canceled = True
+                            break
+                        continue
                     if audio_data is None:
-                        raise Exception(f"No audio returned for note {note_id}. Please try again.")
+                        failures.append(f"{identifier}: No audio returned in batch result")
+                        updateProgress(notes_so_far, total_notes, skipped_count)
+                        if mw.progress.want_cancel():
+                            canceled = True
+                            break
+                        continue
 
                     media_dir = mw.col.media.dir()
 
@@ -903,6 +939,20 @@ def onEdgeTTSOptionSelected(browser):
             if missing_text_skips > 0:
                 mw.taskman.run_on_main(
                     lambda: tooltip(f"Skipped {missing_text_skips} notes with no text in the source field.")
+                )
+
+            if failures:
+                failure_summary = "\n".join(f"- {failure}" for failure in failures)
+                mw.taskman.run_on_main(
+                    lambda: QMessageBox.warning(
+                        mw,
+                        "Audio Generation Completed with Errors",
+                        (
+                            "Audio was generated for available notes, but some items failed:\n"
+                            f"{failure_summary}\n\n"
+                            "You can re-run generation for the failed notes after resolving the issues."
+                        ),
+                    )
                 )
 
     else:
