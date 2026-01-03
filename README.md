@@ -5,7 +5,7 @@
 
 Forked from https://github.com/Gilfaro/edge-tts-generate
 
-***Built with Copilot (mostly Claude Opus) and ChatGPT Codex. While I dislike AI fundamentally, I am a hypocrite and this solves a specific issue I am having.***
+***Built with Copilot (mostly Claude Opus) and ChatGPT Codex. While I dislike AI fundamentally, I am a hypocrite and this solves issues I have and makes the above extension support more than just Japanese, with anecdotally more stability from my testing.***
 
 A language-agnostic Anki add-on that generates high-quality text-to-speech audio for your flashcards using Microsoft Edge's TTS engine. Supports 20+ languages with natural-sounding neural voices.
 
