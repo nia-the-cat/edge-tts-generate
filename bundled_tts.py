@@ -112,6 +112,37 @@ async def _synthesize_batch_async(items: list[TTSItem], config: TTSConfig) -> li
     return sorted(results, key=lambda r: r.identifier)
 
 
+def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """
+    Gracefully shut down an event loop.
+
+    This function properly cleans up all pending tasks and transports
+    before closing the loop to prevent "Event loop is closed" errors
+    on Windows when aiohttp transports are garbage collected.
+    """
+    try:
+        # Cancel all pending tasks
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+
+        # Give tasks a chance to finish cancellation
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
+        # Shut down async generators
+        loop.run_until_complete(loop.shutdown_asyncgens())
+
+        # Shut down the default executor (Python 3.9+)
+        loop.run_until_complete(loop.shutdown_default_executor())
+
+    except Exception:
+        # Ignore errors during shutdown - we're closing anyway
+        pass
+    finally:
+        loop.close()
+
+
 def synthesize_batch(items: list[TTSItem], config: TTSConfig) -> list[TTSResult]:
     """
     Synthesize a batch of items synchronously.
@@ -125,7 +156,7 @@ def synthesize_batch(items: list[TTSItem], config: TTSConfig) -> list[TTSResult]
     try:
         return loop.run_until_complete(_synthesize_batch_async(items, config))
     finally:
-        loop.close()
+        _shutdown_loop(loop)
 
 
 def synthesize_single(text: str, config: TTSConfig) -> bytes:

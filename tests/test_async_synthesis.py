@@ -254,3 +254,81 @@ class TestItemVoiceField:
         effective_voice = item_voice or config_voice
 
         assert effective_voice == "fr-FR-DeniseNeural"
+
+
+class TestEventLoopShutdown:
+    """Test event loop shutdown functionality for proper cleanup."""
+
+    def test_shutdown_loop_function_exists(self):
+        """_shutdown_loop function should be available."""
+        bundled_tts = _load_bundled_tts()
+
+        # The function is module-private but should exist
+        assert hasattr(bundled_tts, "_shutdown_loop")
+        assert callable(bundled_tts._shutdown_loop)
+
+    def test_shutdown_loop_closes_loop(self):
+        """_shutdown_loop should close the event loop."""
+        import asyncio
+
+        bundled_tts = _load_bundled_tts()
+
+        loop = asyncio.new_event_loop()
+        assert not loop.is_closed()
+
+        bundled_tts._shutdown_loop(loop)
+        assert loop.is_closed()
+
+    def test_shutdown_loop_handles_pending_tasks(self):
+        """_shutdown_loop should cancel pending tasks gracefully."""
+        import asyncio
+
+        bundled_tts = _load_bundled_tts()
+
+        loop = asyncio.new_event_loop()
+
+        # Create a pending task
+        async def never_finishes():
+            await asyncio.sleep(1000)
+
+        task = loop.create_task(never_finishes())
+
+        # Allow task to start
+        loop.run_until_complete(asyncio.sleep(0))
+
+        # Shutdown should handle the pending task
+        bundled_tts._shutdown_loop(loop)
+
+        assert loop.is_closed()
+        assert task.cancelled()
+
+    def test_shutdown_loop_handles_empty_loop(self):
+        """_shutdown_loop should handle loop with no tasks."""
+        import asyncio
+
+        bundled_tts = _load_bundled_tts()
+
+        loop = asyncio.new_event_loop()
+
+        # Shutdown with no tasks should work
+        bundled_tts._shutdown_loop(loop)
+        assert loop.is_closed()
+
+    def test_shutdown_loop_handles_completed_tasks(self):
+        """_shutdown_loop should handle loop with completed tasks."""
+        import asyncio
+
+        bundled_tts = _load_bundled_tts()
+
+        loop = asyncio.new_event_loop()
+
+        async def quick_task():
+            return 42
+
+        # Run and complete a task
+        result = loop.run_until_complete(quick_task())
+        assert result == 42
+
+        # Shutdown should still work after completed tasks
+        bundled_tts._shutdown_loop(loop)
+        assert loop.is_closed()
