@@ -738,7 +738,7 @@ def onEdgeTTSOptionSelected(browser):
         speaker = getSpeaker(dialog.speaker_combo)
         if speaker is None:
             logger.error("getSpeaker returned None in onEdgeTTSOptionSelected")
-            raise Exception("getSpeaker returned None in my_action")
+            raise Exception("getSpeaker returned None in onEdgeTTSOptionSelected")
 
         source_field = dialog.source_combo.itemText(dialog.source_combo.currentIndex())
         destination_field = dialog.destination_combo.itemText(dialog.destination_combo.currentIndex())
