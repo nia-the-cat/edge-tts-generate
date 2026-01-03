@@ -23,11 +23,6 @@ The add-on is designed to work with **Python 3.9+** to ensure compatibility with
 - **`manifest.json`**: Anki add-on manifest
 - **`logging_config.py`**: Logging configuration
 
-### Legacy Components (kept for reference)
-
-- **`external_runtime.py`**: Legacy external Python runtime bootstrapping (no longer used)
-- **`external_tts_runner.py`**: Legacy external TTS script (no longer used)
-
 ### Bundled Dependencies Architecture
 
 The add-on bundles all dependencies in the `vendor/` directory using **pure Python implementations** (no C extensions). This approach:
@@ -79,10 +74,10 @@ pytest
 pytest --cov=. --cov-report=term-missing
 
 # Run specific test file
-pytest tests/test_external_runtime.py
+pytest tests/test_edge_tts_gen.py
 
 # Run tests matching a pattern
-pytest -k "test_python_version"
+pytest -k "test_config"
 
 # Run tests with verbose output
 pytest -v --tb=long
@@ -381,13 +376,11 @@ except Exception as exc:
 ### Test Organization
 
 - `tests/test_edge_tts_gen.py` - UI dialog and main logic
-- `tests/test_external_runtime.py` - Python runtime bootstrap logic
-- `tests/test_external_tts_runner.py` - External script and TTS generation
 - `tests/test_generate_audio_batch.py` - GenerateAudioBatch error handling
 - `tests/test_integration.py` - End-to-end integration tests
 - `tests/test_preview_note_selection.py` - Preview note selection UI
 - `tests/test_preview_voice_async.py` - Voice preview async behavior
-- `tests/test_subprocess_flags.py` - Platform-specific subprocess handling
+- `tests/test_logging_config.py` - Logging configuration tests
 
 ### Mocking Strategy
 
@@ -395,9 +388,9 @@ except Exception as exc:
 - Mock `aqt`, `anki`, and Anki's Qt components
 - Provide fake implementations for testing without Anki
 
-**External Services:**
-- Mock subprocess calls to avoid actual TTS generation in tests
-- Mock file I/O for runtime bootstrap tests
+**TTS Module:**
+- Mock `synthesize_batch` to avoid actual TTS generation in tests
+- Use fixtures for consistent test data
 - Use fixtures for consistent test data
 
 ### Test Coverage Goals

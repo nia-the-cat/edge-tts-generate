@@ -89,7 +89,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["edge_tts_gen", "external_runtime", "external_tts_runner"]
+known-first-party = ["edge_tts_gen", "bundled_tts", "logging_config"]
 force-single-line = false
 lines-after-imports = 2
 
