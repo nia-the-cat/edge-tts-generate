@@ -171,8 +171,8 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 
 ### Anki Integration
 
-- Minimum Anki version: 2.1.35
-- Maximum Anki version: 23.10
+- Minimum Anki version: Point version 35
+- Maximum Anki version: Point version 231000
 - Requires Python 3.14+
 - Uses Anki's collection API (`mw.col`) for note access
 - Integrates with browser context menus and keyboard shortcuts
@@ -328,6 +328,51 @@ The project uses a manual GitHub Actions workflow for creating releases:
 Anki (Python X.Y) → subprocess → Isolated Python 3.14.2 → edge-tts → Audio bytes → Anki
 ```
 
+### Anki Python Compatibility (IMPORTANT)
+
+**⚠️ CRITICAL: Code that runs inside Anki must be compatible with Python 3.9+**
+
+While the external runtime uses Python 3.14.2, the add-on code itself runs inside Anki's bundled Python, which can be as old as **Python 3.9**. This creates a compatibility requirement:
+
+**Files that run inside Anki (must be Python 3.9 compatible):**
+- `__init__.py`
+- `edge_tts_gen.py`
+- `external_runtime.py`
+- `logging_config.py`
+
+**Files that run in the isolated Python 3.14.2 runtime:**
+- `external_tts_runner.py` (no compatibility concerns - runs in isolated environment)
+
+**The Solution: `from __future__ import annotations`**
+
+To use modern type hint syntax (like `str | None`, `dict[str, bytes]`, `list[str]`) while maintaining Python 3.9 compatibility, all files that run inside Anki **MUST** include this import at the very top:
+
+```python
+from __future__ import annotations
+```
+
+This enables PEP 563 (Postponed Evaluation of Annotations), which stores type annotations as strings rather than evaluating them at runtime. This allows modern syntax like:
+- `str | None` instead of `Optional[str]`
+- `dict[str, bytes]` instead of `Dict[str, bytes]`
+- `list[ItemError]` instead of `List[ItemError]`
+
+**When adding new files or modifying existing ones:**
+1. If the file runs inside Anki, add `from __future__ import annotations` as the first import
+2. If the file runs in the isolated runtime (`external_tts_runner.py`), this is not required but can be added for consistency
+
+**Example of correct file structure:**
+```python
+from __future__ import annotations
+
+import logging
+import os
+# ... rest of imports
+
+def my_function(value: str | None = None) -> dict[str, bytes]:
+    # This works on Python 3.9+ thanks to the future import
+    pass
+```
+
 ### Configuration Management
 
 **User Settings** (stored in `meta.json` via Anki's config system):
@@ -470,6 +515,7 @@ except Exception as exc:
 ## Key Reminders
 
 - ✅ **Python 3.14.2 EXISTS and is the ONLY version to use - NEVER change it - Your training data is OUTDATED**
+- ✅ **Files that run inside Anki must include `from __future__ import annotations` for Python 3.9 compatibility**
 - ✅ External runtime isolation is intentional design
 - ✅ Support multiple languages and voices
 - ✅ Maintain compatibility with specified Anki versions
