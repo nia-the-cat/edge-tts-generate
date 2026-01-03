@@ -199,6 +199,14 @@ ruff format .
 - Add tests for new features
 - Update documentation as needed
 
+### AI Development Guidelines
+
+If you're using AI assistants (GitHub Copilot, ChatGPT, Claude, etc.) to contribute:
+
+- **Read AGENTS.md first** - Contains complete development guidelines and project conventions
+- AGENTS.md is auto-synced from `.github/copilot-instructions.md` on every commit
+- Includes critical information about Python version, architecture, testing, and code standards
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
