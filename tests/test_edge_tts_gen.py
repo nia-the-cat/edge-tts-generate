@@ -105,92 +105,53 @@ class TestGetSpeakerLogic:
 
 
 # ==============================================================================
-# Tests for CREATE_NEW_FIELD_OPTION constant
+# Tests for text processing regex patterns
 # ==============================================================================
 
-class TestCreateNewFieldOption:
-    """Test the CREATE_NEW_FIELD_OPTION constant."""
-
-    def test_constant_value(self):
-        """CREATE_NEW_FIELD_OPTION should have expected value."""
-        CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
-        assert CREATE_NEW_FIELD_OPTION is not None
-        assert isinstance(CREATE_NEW_FIELD_OPTION, str)
-
-    def test_constant_is_recognizable(self):
-        """CREATE_NEW_FIELD_OPTION should be easily distinguishable from field names."""
-        CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
-        # Should contain visual markers
-        assert "[" in CREATE_NEW_FIELD_OPTION or "+" in CREATE_NEW_FIELD_OPTION
-
-
 class TestTextProcessingRegex:
-    """Test the text processing regex patterns used in the module."""
+    """Test the text processing regex patterns used in the module.
+
+    Note: Tests for regex patterns from the actual module are in
+    test_dataclasses_and_helpers.py (TestRegexPatterns class).
+    These tests verify the expected regex behavior with inline patterns.
+    """
 
     def test_html_tag_removal(self):
         """Test HTML tag removal regex pattern."""
         tag_re = re.compile(r"(<!--.*?-->|<[^>]*>)")
 
         # Test basic HTML tags
-        text = "<b>Bold</b> text"
-        result = tag_re.sub("", text)
-        assert result == "Bold text"
-
+        assert tag_re.sub("", "<b>Bold</b> text") == "Bold text"
         # Test nested tags
-        text = "<div><span>Nested</span></div>"
-        result = tag_re.sub("", text)
-        assert result == "Nested"
-
+        assert tag_re.sub("", "<div><span>Nested</span></div>") == "Nested"
         # Test self-closing tags
-        text = "Line<br/>break"
-        result = tag_re.sub("", text)
-        assert result == "Linebreak"
-
+        assert tag_re.sub("", "Line<br/>break") == "Linebreak"
         # Test HTML comments
-        text = "Text<!-- comment -->More"
-        result = tag_re.sub("", text)
-        assert result == "TextMore"
+        assert tag_re.sub("", "Text<!-- comment -->More") == "TextMore"
 
     def test_entity_removal(self):
         """Test HTML entity removal regex pattern."""
         entity_re = re.compile(r"(&[^;]+;)")
 
         # Test common entities
-        text = "&nbsp;space&amp;ampersand"
-        result = entity_re.sub("", text)
-        assert result == "spaceampersand"
-
+        assert entity_re.sub("", "&nbsp;space&amp;ampersand") == "spaceampersand"
         # Test numeric entities
-        text = "&#60;less than&#62;"
-        result = entity_re.sub("", text)
-        assert result == "less than"
+        assert entity_re.sub("", "&#60;less than&#62;") == "less than"
 
     def test_reading_extraction(self):
-        """Test reading extraction from brackets."""
-        # Pattern: Replace text with reading from brackets
-        # The pattern replaces the word and brackets with just the reading
+        """Test reading extraction from brackets (e.g., kanji[reading] -> reading)."""
         pattern = r" ?\S*?\[(.*?)\]"
 
-        text = "漢字[かんじ]"
-        result = re.sub(pattern, r"\1", text)
-        assert result == "かんじ"
-
-        # Note: This pattern consumes non-whitespace before the bracket
-        text = "日本語[にほんご]を勉強[べんきょう]"
-        result = re.sub(pattern, r"\1", text)
-        assert result == "にほんごべんきょう"
+        assert re.sub(pattern, r"\1", "漢字[かんじ]") == "かんじ"
+        # Pattern consumes non-whitespace before the bracket
+        assert re.sub(pattern, r"\1", "日本語[にほんご]を勉強[べんきょう]") == "にほんごべんきょう"
 
     def test_bracket_content_removal(self):
         """Test bracket content removal for pitch accent markers."""
         pattern = r"\[.*?\]"
 
-        text = "word[;a,h]"
-        result = re.sub(pattern, "", text)
-        assert result == "word"
-
-        text = "聞[き,きく;h]いた"
-        result = re.sub(pattern, "", text)
-        assert result == "聞いた"
+        assert re.sub(pattern, "", "word[;a,h]") == "word"
+        assert re.sub(pattern, "", "聞[き,きく;h]いた") == "聞いた"
 
 
 # ==============================================================================
