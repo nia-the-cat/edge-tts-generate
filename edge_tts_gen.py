@@ -595,7 +595,12 @@ def GenerateAudioBatch(text_speaker_items, config):
             "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
         ) from exc
 
-    payload = {"items": [{"id": identifier, "text": text} for identifier, text, _voice in text_speaker_items]}
+    payload = {
+        "items": [
+            {"id": identifier, "text": text, "voice": voice}
+            for identifier, text, voice in text_speaker_items
+        ]
+    }
 
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as handle:
         json.dump(payload, handle)

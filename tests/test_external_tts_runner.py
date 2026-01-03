@@ -367,6 +367,53 @@ class TestSynthesizeFunction:
         finally:
             os.unlink(batch_file)
 
+    def test_synthesize_batch_respects_item_voice(self):
+        """Batch synthesis should use per-item voices, falling back to CLI voice when missing."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(
+                {
+                    "items": [
+                        {"id": "2", "text": "Second", "voice": "custom-voice"},
+                        {"id": "1", "text": "First"},
+                    ]
+                },
+                f,
+            )
+            batch_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                batch_file=batch_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            external_tts_runner = _load_external_tts_runner()
+
+            seen_voices: dict[str, str] = {}
+
+            async def fake_synthesize_text(text, synth_args):
+                seen_voices[text] = synth_args.voice
+                return f"audio-{text}".encode()
+
+            with patch.object(external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text):
+                result = asyncio.run(external_tts_runner.synthesize_batch(args))
+
+            assert seen_voices == {
+                "First": "en-US-JennyNeural",
+                "Second": "custom-voice",
+            }
+
+            expected = [
+                {"id": "1", "audio": base64.b64encode(b"audio-First").decode("ascii")},
+                {"id": "2", "audio": base64.b64encode(b"audio-Second").decode("ascii")},
+            ]
+            assert result == expected
+        finally:
+            os.unlink(batch_file)
+
 
 class TestMainFunction:
     """Test the main entry point function."""
