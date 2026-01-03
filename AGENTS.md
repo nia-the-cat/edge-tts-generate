@@ -171,8 +171,8 @@ The project enforces these ruff rule sets (configured in `pyproject.toml`):
 
 ### Anki Integration
 
-- Minimum Anki version: Point version 35
-- Maximum Anki version: Point version 231000
+- Minimum Anki version: 2.1.35
+- Maximum Anki version: 23.10
 - Requires Python 3.14+
 - Uses Anki's collection API (`mw.col`) for note access
 - Integrates with browser context menus and keyboard shortcuts
