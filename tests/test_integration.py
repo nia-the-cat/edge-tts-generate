@@ -6,8 +6,8 @@ These tests verify that components work together correctly.
 import importlib.util
 import json
 import os
+import re
 import sys
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -17,6 +17,8 @@ def _load_module(module_name, module_path):
     """Load a module from file without adding to sys.path."""
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
+    # Register in sys.modules so dataclasses and other features work
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -97,8 +99,7 @@ class TestConfigIntegration:
         required_files = [
             "__init__.py",
             "edge_tts_gen.py",
-            "external_runtime.py",
-            "external_tts_runner.py",
+            "bundled_tts.py",
             "config.json",
             "manifest.json",
         ]
@@ -109,53 +110,40 @@ class TestConfigIntegration:
 
 
 @pytest.mark.integration
-class TestModuleImports:
-    """Test that modules can be imported correctly."""
+class TestBundledTTSModule:
+    """Test that the bundled TTS module is properly structured."""
 
-    def test_external_runtime_imports(self):
-        """external_runtime.py should import without errors."""
-        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
+    def test_bundled_tts_imports(self):
+        """bundled_tts.py should have expected structure."""
+        # Add vendor directory to path first (like bundled_tts does)
+        vendor_path = os.path.join(_base_path, "vendor")
+        if vendor_path not in sys.path:
+            sys.path.insert(0, vendor_path)
 
-        # Check key functions exist
-        assert hasattr(external_runtime, "get_external_python")
-        assert hasattr(external_runtime, "PYTHON_VERSION")
-        assert hasattr(external_runtime, "EDGE_TTS_SPEC")
+        # Set environment variables for pure Python mode
+        os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
+        os.environ["FROZENLIST_NO_EXTENSIONS"] = "1"
+        os.environ["MULTIDICT_NO_EXTENSIONS"] = "1"
+        os.environ["YARL_NO_EXTENSIONS"] = "1"
+        os.environ["PROPCACHE_NO_EXTENSIONS"] = "1"
 
-    def test_external_tts_runner_structure(self):
-        """external_tts_runner.py should have expected structure."""
-        # Mock edge_tts since it's not installed
-        sys.modules["edge_tts"] = MagicMock()
+        bundled_tts = _load_module("bundled_tts", os.path.join(_base_path, "bundled_tts.py"))
 
-        external_tts_runner = _load_module("external_tts_runner", os.path.join(_base_path, "external_tts_runner.py"))
+        # Check key classes and functions exist
+        assert hasattr(bundled_tts, "TTSConfig")
+        assert hasattr(bundled_tts, "TTSItem")
+        assert hasattr(bundled_tts, "TTSResult")
+        assert hasattr(bundled_tts, "synthesize_batch")
+        assert hasattr(bundled_tts, "synthesize_single")
 
-        assert hasattr(external_tts_runner, "main")
-        assert hasattr(external_tts_runner, "synthesize")
+    def test_vendor_directory_exists(self):
+        """Vendor directory with dependencies should exist."""
+        vendor_path = os.path.join(_base_path, "vendor")
+        assert os.path.isdir(vendor_path), "vendor directory should exist"
 
-
-@pytest.mark.integration
-class TestExternalRuntimeConstants:
-    """Test external runtime configuration."""
-
-    def test_python_version_is_pinned(self):
-        """Python version should be specifically pinned."""
-        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
-
-        version = external_runtime.PYTHON_VERSION
-        # Should be exact version, not a range
-        parts = version.split(".")
-        assert len(parts) == 3
-        # Should be 3.14.x as specified in the project
-        assert parts[0] == "3"
-        assert parts[1] == "14"
-
-    def test_edge_tts_is_pinned(self):
-        """edge-tts version should be pinned."""
-        external_runtime = _load_module("external_runtime", os.path.join(_base_path, "external_runtime.py"))
-
-        spec = external_runtime.EDGE_TTS_SPEC
-        # Should use == for exact version
-        assert "==" in spec
-        assert "edge-tts" in spec
+        # Check for key vendored packages
+        edge_tts_path = os.path.join(vendor_path, "edge_tts")
+        assert os.path.isdir(edge_tts_path), "edge_tts should be vendored"
 
 
 @pytest.mark.integration
@@ -164,8 +152,6 @@ class TestTextProcessingPipeline:
 
     def test_full_text_processing(self):
         """Test complete text processing pipeline."""
-        import re
-
         # Simulate the text processing from getNoteTextAndSpeaker
         original_text = '<div class="sentence">日本語[にほんご]を<br>勉強[べんきょう;a,h]&nbsp;しています</div>'
 
@@ -195,8 +181,6 @@ class TestTextProcessingPipeline:
 
     def test_whitespace_handling_respects_language(self):
         """Whitespace removal should depend on the selected voice locale."""
-        import re
-
         sample_text = "This sentence should keep its spaces"
 
         def strip_spaces(text, voice):
@@ -210,8 +194,6 @@ class TestTextProcessingPipeline:
 
     def test_handles_various_input_formats(self):
         """Test processing handles various input formats."""
-        import re
-
         tag_re = re.compile(r"(<!--.*?-->|<[^>]*>)")
         entity_re = re.compile(r"(&[^;]+;)")
 

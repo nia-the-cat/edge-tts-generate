@@ -17,14 +17,15 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 - 🎛️ **Voice Customization** - Adjust pitch, speed, and volume
 - 👂 **Voice Preview** - Listen to voices before generating
 - 🔧 **Flexible Options** - Append, overwrite, or skip existing audio
-- 🚀 **Zero Setup** - Automatically downloads and configures Python runtime
+- 🚀 **Zero Setup** - All dependencies bundled, works out of the box
 - 📝 **Smart Text Processing** - Handles HTML, brackets, and special characters
+- 💻 **Cross-Platform** - Works on Windows, macOS, and Linux
 
 # Requirements
 
-- Anki version 2.1.35+
-- Internet connection (for first-time setup and TTS generation)
-- **Platform**: Currently the automatic Python runtime download only supports Windows (amd64). macOS and Linux users would need manual setup.
+- **Anki version**: 2.1.35 to 23.10 (point versions 35-231000)
+- **Python**: 3.9+ (bundled with Anki)
+- **Internet connection**: Required for TTS generation only (no setup downloads needed)
 
 # Installation
 
@@ -36,14 +37,9 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 
 # Setup
 
-The add-on automatically bootstraps its own isolated Python 3.14.2 runtime when you first generate audio. No manual setup required!
+**No setup required!** The add-on comes with all dependencies bundled. Just install and start generating audio immediately.
 
-**On first use:**
-1. The add-on downloads the official Python 3.14.2 embeddable package (~15MB)
-2. Installs the edge-tts library in the isolated environment
-3. Reuses this runtime for all future audio generation
-
-This keeps everything isolated from Anki's Python installation and avoids dependency conflicts.
+The edge-tts library and its dependencies are included in the add-on package using pure Python implementations, ensuring compatibility with Anki's bundled Python on all platforms.
 
 ## Using the Add-on
 
@@ -122,16 +118,10 @@ The add-on comes with 20 pre-configured voices across 10 languages:
 
 ## Troubleshooting
 
-### First-Time Setup Issues
-
-**Download Fails**: If the Python runtime download fails, check your internet connection and try again. The add-on needs to download ~15MB on first use.
-
-**Permission Errors**: On some systems, you may need to run Anki with appropriate permissions to download and extract the Python runtime.
-
 ### Audio Generation Issues
 
 **No Audio Generated**: 
-- Verify you have an internet connection (edge-tts requires internet)
+- Verify you have an internet connection (edge-tts requires internet for TTS generation)
 - Check that the source field contains text
 - Ensure the selected voice supports your language
 
@@ -141,14 +131,7 @@ The add-on comes with 20 pre-configured voices across 10 languages:
 
 ### Performance
 
-**First Generation is Slow**: The first time you generate audio, the add-on needs to:
-1. Download Python runtime (~15MB)
-2. Install edge-tts library
-3. Initialize the speech engine
-
-Subsequent generations will be much faster as the runtime is cached.
-
-**Large Batches**: When processing hundreds of cards, generation happens sequentially. Consider processing in smaller batches if needed.
+**Large Batches**: When processing hundreds of cards, generation happens with limited concurrency. Consider processing in smaller batches if needed.
 
 ## Configuration
 
@@ -236,10 +219,19 @@ ruff format .
 
 ### Code Standards
 
-- Python 3.14.2 is the required version
+- Python 3.9+ compatibility (uses `from __future__ import annotations` for modern type hints)
 - All code must pass `ruff` linting and formatting
 - Add tests for new features
 - Update documentation as needed
+
+### Architecture
+
+The add-on bundles all dependencies (edge-tts, aiohttp, etc.) in a `vendor` directory using pure Python implementations. This eliminates the need for downloading external runtimes and ensures cross-platform compatibility.
+
+**Key components:**
+- `bundled_tts.py` - TTS synthesis using bundled edge-tts library
+- `edge_tts_gen.py` - Main UI and audio generation orchestration  
+- `vendor/` - Bundled pure-Python dependencies
 
 ### AI Development Guidelines
 

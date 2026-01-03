@@ -109,10 +109,10 @@ class TestGetLogger:
         logger = logging_config.get_logger("__main__")
         assert "edge_tts_generate" in logger.name
 
-    def test_handles_external_runner_name(self):
-        """Should handle external_tts_runner module name."""
+    def test_handles_bundled_tts_name(self):
+        """Should handle bundled_tts module name."""
         logging_config = load_logging_config()
-        logger = logging_config.get_logger("external_tts_runner")
+        logger = logging_config.get_logger("bundled_tts")
         assert "edge_tts_generate" in logger.name
 
     def test_caches_logger_instances(self):
