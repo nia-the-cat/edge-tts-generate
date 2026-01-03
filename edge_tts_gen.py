@@ -344,11 +344,6 @@ class AudioGenDialog(qt.QDialog):
         self.reset_button = qt.QPushButton("Reset to Defaults")
         self.reset_button.setToolTip("Reset volume, pitch, and speed to their default values (0)")
 
-        # Store references to labels for reset functionality
-        self._volume_label = volume_label
-        self._pitch_label = pitch_label
-        self._speed_label = speed_label
-
         def reset_sliders():
             """Reset all voice adjustment sliders to default values."""
             self.volume_slider.setValue(0)
