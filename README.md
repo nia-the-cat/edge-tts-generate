@@ -7,6 +7,8 @@ Forked from https://github.com/Gilfaro/edge-tts-generate
 
 A language-agnostic Anki add-on that generates high-quality text-to-speech audio for your flashcards using Microsoft Edge's TTS engine. Supports 20+ languages with natural-sounding neural voices.
 
+This extension can be built on MacOS, Linux, and Windows, but MacOS and Linux functionality is not tested and very likely does not work. This is a planned feature.
+
 # What does this do?
 
 This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tts) synthesis engine to generate natural-sounding audio for your flashcards. It's perfect for language learning, pronunciation practice, or any study material where hearing the content is helpful.
