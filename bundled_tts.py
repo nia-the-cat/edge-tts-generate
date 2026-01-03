@@ -9,30 +9,16 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import os
-import sys
 from dataclasses import dataclass
-from os.path import dirname, join
 
-
-# Force pure Python mode for all packages with C extensions
-# This must be done BEFORE importing the packages
-os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
-os.environ["FROZENLIST_NO_EXTENSIONS"] = "1"
-os.environ["MULTIDICT_NO_EXTENSIONS"] = "1"
-os.environ["YARL_NO_EXTENSIONS"] = "1"
-os.environ["PROPCACHE_NO_EXTENSIONS"] = "1"
-
-
-def _setup_vendor_path() -> None:
-    """Add vendor directory to sys.path if not already present."""
-    vendor_dir = join(dirname(__file__), "vendor")
-    if vendor_dir not in sys.path:
-        sys.path.insert(0, vendor_dir)
+try:
+    from .vendor_setup import ensure_vendor_path
+except ImportError:
+    from vendor_setup import ensure_vendor_path
 
 
 # Set up vendor path before importing edge_tts
-_setup_vendor_path()
+ensure_vendor_path()
 
 # Now we can import edge_tts from the vendor directory
 import edge_tts  # noqa: E402
