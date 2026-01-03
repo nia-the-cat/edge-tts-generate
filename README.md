@@ -23,8 +23,9 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 
 # Requirements
 
-- Anki version 2.1.35+ (Python 3.9+)
-- Internet connection (for TTS generation only - no setup downloads needed)
+- **Anki version**: 2.1.35 to 23.10 (point versions 35-231000)
+- **Python**: 3.9+ (bundled with Anki)
+- **Internet connection**: Required for TTS generation only (no setup downloads needed)
 
 # Installation
 

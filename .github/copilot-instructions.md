@@ -162,9 +162,9 @@ All dependencies are bundled as pure Python packages:
 
 ### Anki Integration
 
-- Minimum Anki version: Point version 35
-- Maximum Anki version: Point version 231000
-- Requires Python 3.9+ (Anki's bundled Python)
+- **Minimum Anki version**: 2.1.35 (point version 35)
+- **Maximum Anki version**: 23.10 (point version 231000)
+- **Python requirement**: 3.9+ (bundled with Anki)
 - Uses Anki's collection API (`mw.col`) for note access
 - Integrates with browser context menus and keyboard shortcuts
 
