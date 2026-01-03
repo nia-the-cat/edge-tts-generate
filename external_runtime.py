@@ -15,10 +15,10 @@ EMBED_URL = f"https://www.python.org/ftp/python/{PYTHON_VERSION}/python-{PYTHON_
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 EDGE_TTS_SPEC = "edge-tts==7.2.7"
 
-EXPECTED_HASHES = {
-    EMBED_URL: "fefdb4dddb2f7851bc1e87f4b0fbdf651ae0d3b62f6133b17012d10325e4a49a",
-    GET_PIP_URL: "1c3f1ab6f6b0c8ad4e4f4148e90fd89a3248dbe4a564c39b2971f91e78f7a9b9",
-}
+# Hash for Python embeddable package (stable, versioned file)
+EXPECTED_EMBED_HASH = "fefdb4dddb2f7851bc1e87f4b0fbdf651ae0d3b62f6133b17012d10325e4a49a"
+# Note: get-pip.py is not hash-verified because it's frequently updated by pip maintainers
+# and is hosted on a trusted source (pypa.io)
 
 # Use a module-level logger
 logger = logging.getLogger("edge_tts_generate.external_runtime")
@@ -89,7 +89,8 @@ def _ensure_import_site(python_dir: str) -> None:
 def _ensure_get_pip(python_exe: str, cache_dir: str) -> str:
     script_path = os.path.join(cache_dir, "get-pip.py")
     if not os.path.exists(script_path):
-        _download(GET_PIP_URL, script_path, expected_hash=EXPECTED_HASHES[GET_PIP_URL])
+        # No hash verification for get-pip.py as it's frequently updated
+        _download(GET_PIP_URL, script_path)
     subprocess.run(
         [python_exe, script_path, "--no-warn-script-location"],
         check=True,
@@ -123,7 +124,7 @@ def get_external_python(addon_dir: str) -> str:
     if not os.path.exists(python_exe):
         logger.info("Python executable not found, downloading Python %s", PYTHON_VERSION)
         archive_path = os.path.join(runtime_dir, "python-embed.zip")
-        _download(EMBED_URL, archive_path, expected_hash=EXPECTED_HASHES[EMBED_URL])
+        _download(EMBED_URL, archive_path, expected_hash=EXPECTED_EMBED_HASH)
         logger.debug("Extracting Python to %s", python_dir)
         _extract_zip(archive_path, python_dir)
         _ensure_import_site(python_dir)

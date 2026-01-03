@@ -622,7 +622,8 @@ def GenerateAudioBatch(text_speaker_items, config):
     except Exception as exc:
         logger.error("Failed to bootstrap external Python runtime: %s", exc)
         raise Exception(
-            "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
+            f"Failed to bootstrap external Python runtime: {exc}\n\n"
+            "If this persists, try deleting the 'runtime' folder in the add-on directory and restarting Anki."
         ) from exc
 
     payload = {
