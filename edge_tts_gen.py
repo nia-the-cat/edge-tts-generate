@@ -774,7 +774,7 @@ def onEdgeTTSOptionSelected(browser):
                 language_code = selected_voice.split("-")[0].lower()
                 return language_code in {"ja", "zh"}
 
-            # Remove html tags https://stackoverflow.com/a/19730306
+            # Remove HTML tags and entities using standard regex patterns
             note_text = ENTITY_RE.sub("", note_text)
             note_text = TAG_RE.sub("", note_text)
 

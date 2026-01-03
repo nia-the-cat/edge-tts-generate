@@ -24,7 +24,7 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 
 - Anki (versions with point version 35-231000)
 - Internet connection (for first-time setup and TTS generation)
-- **Windows only**: The automatic Python runtime download is currently only supported on Windows. macOS and Linux support is planned for future releases.
+- **Platform**: Currently the automatic Python runtime download only supports Windows (amd64). macOS and Linux users would need manual setup.
 
 # Installation
 
@@ -102,7 +102,7 @@ The add-on comes with 20 pre-configured voices across 10 languages:
 | 🇧🇷 Portuguese (BR) | Francisca | Antonio |
 | 🇨🇳 Chinese (Simplified) | Xiaoxiao | Yunxi |
 
-**Preview Voice**: Click the "Preview Voice" button to hear the selected voice using text from your selected note. When multiple notes are selected, you can choose which note to use for the preview.
+**Preview Voice**: Click the "Preview Voice" button to hear the selected voice. When multiple notes are selected, you can choose which note to use for the preview text.
 
 #### 4. Advanced Options
 
