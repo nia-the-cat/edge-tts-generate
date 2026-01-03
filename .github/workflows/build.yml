@@ -43,6 +43,9 @@ jobs:
           # Copy all add-on files (Python files and JSON configs, excluding .git, .github, build artifacts)
           find . -maxdepth 1 -type f \( -name '*.py' -o -name '*.json' \) -exec cp {} build/ \;
           
+          # Include vendored dependencies required at runtime
+          cp -r vendor build/vendor
+          
           # Create the .ankiaddon file (which is just a zip file)
           cd build
           zip -r ../edge-tts-generator.ankiaddon .
