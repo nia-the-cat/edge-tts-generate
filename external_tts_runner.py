@@ -7,22 +7,38 @@ import sys
 import edge_tts
 
 BATCH_CONCURRENCY_LIMIT = 5
-
+STREAM_TIMEOUT_SECONDS_DEFAULT = 30.0
+STREAM_TIMEOUT_RETRIES_DEFAULT = 1
 
 async def synthesize_text(text: str, args: argparse.Namespace) -> bytes:
-    tts = edge_tts.Communicate(
-        text,
-        voice=args.voice,
-        pitch=args.pitch,
-        rate=args.rate,
-        volume=args.volume,
+    timeout_seconds = getattr(args, "stream_timeout", STREAM_TIMEOUT_SECONDS_DEFAULT)
+    max_retries = getattr(
+        args, "stream_timeout_retries", STREAM_TIMEOUT_RETRIES_DEFAULT
     )
 
-    audio = b""
-    async for chunk in tts.stream():
-        if chunk["type"] == "audio":
-            audio += chunk["data"]
-    return audio
+    async def _collect_audio() -> bytes:
+        tts = edge_tts.Communicate(
+            text,
+            voice=args.voice,
+            pitch=args.pitch,
+            rate=args.rate,
+            volume=args.volume,
+        )
+
+        audio = b""
+        async for chunk in tts.stream():
+            if chunk["type"] == "audio":
+                audio += chunk["data"]
+        return audio
+
+    for attempt in range(max_retries + 1):
+        try:
+            return await asyncio.wait_for(_collect_audio(), timeout=timeout_seconds)
+        except asyncio.TimeoutError as exc:
+            if attempt == max_retries:
+                raise RuntimeError(
+                    f"Timed out after {timeout_seconds} seconds while streaming audio"
+                ) from exc
 
 
 async def synthesize(args: argparse.Namespace) -> bytes:
@@ -47,6 +63,8 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
                 pitch=args.pitch,
                 rate=args.rate,
                 volume=args.volume,
+                stream_timeout=args.stream_timeout,
+                stream_timeout_retries=args.stream_timeout_retries,
             )
             return await synthesize_text(text, item_args)
 
@@ -89,6 +107,18 @@ def main() -> int:
     parser.add_argument("--pitch", required=True)
     parser.add_argument("--rate", required=True)
     parser.add_argument("--volume", required=True)
+    parser.add_argument(
+        "--stream-timeout",
+        type=float,
+        default=STREAM_TIMEOUT_SECONDS_DEFAULT,
+        help="Seconds to wait for the TTS stream before timing out",
+    )
+    parser.add_argument(
+        "--stream-timeout-retries",
+        type=int,
+        default=STREAM_TIMEOUT_RETRIES_DEFAULT,
+        help="Number of times to retry streaming after a timeout",
+    )
     args = parser.parse_args()
 
     if args.batch_file:
