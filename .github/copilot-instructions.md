@@ -227,7 +227,8 @@ All dependencies are bundled as pure Python packages:
 - Audio handling radio buttons (append/overwrite/skip)
 - Voice selection combo box with preview
 - Bracket handling checkbox
-- Pitch/speed/volume sliders (in advanced mode)
+- Pitch/speed/volume sliders with Reset to Defaults button
+- Overwrite confirmation dialog (for destructive actions)
 
 ### Debugging
 
