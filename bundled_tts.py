@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import importlib
 from dataclasses import dataclass
+
 
 try:
     from .vendor_setup import ensure_vendor_path
@@ -19,9 +21,7 @@ except ImportError:
 
 # Set up vendor path before importing edge_tts
 ensure_vendor_path()
-
-# Now we can import edge_tts from the vendor directory
-import edge_tts  # noqa: E402
+edge_tts = importlib.import_module("edge_tts")
 
 
 BATCH_CONCURRENCY_LIMIT = 5

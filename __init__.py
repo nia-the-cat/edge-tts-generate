@@ -4,6 +4,7 @@ import logging
 
 from aqt import browser, gui_hooks, mw, qt
 
+
 try:
     from .vendor_setup import ensure_vendor_path
 except ImportError:
