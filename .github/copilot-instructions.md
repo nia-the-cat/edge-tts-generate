@@ -336,11 +336,28 @@ This enables PEP 563 (Postponed Evaluation of Annotations), allowing modern synt
 ### Configuration Management
 
 **User Settings** (stored in `meta.json` via Anki's config system):
-- Last selected source/destination fields
-- Last selected speaker
-- Audio handling mode preference
-- Slider values (pitch, speed, volume)
-- Bracket handling preference
+
+All user preferences are automatically saved and **persist across Anki restarts**. The add-on uses Anki's `mw.addonManager.writeConfig()` API which writes to the `meta.json` file's `config` field.
+
+**Retained Settings:**
+| Setting | Config Key | Default | When Saved |
+|---------|-----------|---------|------------|
+| Source field | `last_source_field` | Smart detection* | On dialog confirm |
+| Destination field | `last_destination_field` | Smart detection* | On dialog confirm |
+| Voice selection | `last_speaker_name` | First in list | On dialog confirm |
+| Audio handling mode | `last_audio_handling` | `"append"` | On dialog confirm |
+| Ignore brackets | `ignore_brackets_enabled` | `true` | On dialog confirm |
+| Pitch adjustment | `pitch_slider_value` | `0` | On slider change |
+| Speed adjustment | `speed_slider_value` | `0` | On slider change |
+| Volume adjustment | `volume_slider_value` | `0` | On slider change |
+
+*Smart detection looks for common field names like "Expression", "Sentence" for source and "Audio" for destination.
+
+**Implementation Details:**
+- Settings are read in `AudioGenDialog.__init__()` when the dialog opens
+- Field/voice/mode settings are saved in `onEdgeTTSOptionSelected()` when the user confirms
+- Slider values are saved immediately when changed via `update_slider()` callback
+- All settings merge with defaults from `config.json` (user values override defaults)
 
 **Voice List** (stored in `config.json`):
 - Default speaker identifiers
@@ -382,6 +399,7 @@ except Exception as exc:
 - `tests/test_preview_note_selection.py` - Preview note selection UI
 - `tests/test_preview_voice_async.py` - Voice preview async behavior
 - `tests/test_logging_config.py` - Logging configuration tests
+- `tests/test_user_preference_retention.py` - User preference persistence across Anki sessions
 
 ### Mocking Strategy
 
