@@ -145,6 +145,8 @@ class MyDialog(qt.QDialog):
 
         self.source_combo.setCurrentIndex(source_field_index)
         self.destination_combo.setCurrentIndex(destination_field_index)
+        # Track destination selection for restoring after cancelled "Create new field" dialog
+        self._previous_destination_index = destination_field_index
 
         source_label = qt.QLabel("Source field: ")
         source_tooltip = "The field to read from. For example if your sentence is in the field 'Expression' you want to choose 'Expression' as the source field to read from"
@@ -360,6 +362,9 @@ class MyDialog(qt.QDialog):
     def onDestinationChanged(self, index):
         """Handle destination field dropdown change - prompt for new field name if 'Create new field' is selected"""
         if self.destination_combo.itemText(index) == CREATE_NEW_FIELD_OPTION:
+            # Remember the previous selection before showing the dialog
+            previous_index = getattr(self, "_previous_destination_index", 0)
+
             field_name, ok = QInputDialog.getText(
                 self, "Create New Field", "Enter the name for the new audio field:", text="Audio"
             )
@@ -372,17 +377,22 @@ class MyDialog(qt.QDialog):
                         "Field Exists",
                         f"A field named '{field_name}' already exists. Please select it from the dropdown or choose a different name.",
                     )
-                    # Reset to first item
-                    self.destination_combo.setCurrentIndex(0)
+                    # Restore previous selection
+                    self.destination_combo.setCurrentIndex(previous_index)
                 else:
                     self.new_field_name = field_name
                     # Insert the new field name before the "Create new field" option
                     insert_index = self.destination_combo.count() - 1
                     self.destination_combo.insertItem(insert_index, field_name)
                     self.destination_combo.setCurrentIndex(insert_index)
+                    # Update previous index to the new selection
+                    self._previous_destination_index = insert_index
             else:
-                # User cancelled, reset to first item
-                self.destination_combo.setCurrentIndex(0)
+                # User cancelled, restore previous selection
+                self.destination_combo.setCurrentIndex(previous_index)
+        else:
+            # Track the current selection for potential restoration later
+            self._previous_destination_index = index
 
     def pre_accept(self):
         destination_text = self.destination_combo.itemText(self.destination_combo.currentIndex())
@@ -470,9 +480,14 @@ class MyDialog(qt.QDialog):
             self.preview_note_combo.setCurrentIndex(current_index)
 
     def _getPreviewTextFromNote(self, source_field, speaker):
-        """Get text from the selected note's source field for preview."""
+        """Get text from the selected note's source field for preview.
+
+        Returns a tuple (text, status) where:
+        - text: The processed text, or None if unavailable
+        - status: One of "ok", "no_notes", "note_none", "field_missing", "field_empty"
+        """
         if not self.selected_notes:
-            return None
+            return None, "no_notes"
 
         # Get the selected note index from combo box (if multiple notes)
         note_index = 0
@@ -485,15 +500,15 @@ class MyDialog(qt.QDialog):
         note_id = self.selected_notes[note_index]
         note = mw.col.get_note(note_id)
         if note is None:
-            return None
+            return None, "note_none"
 
         try:
             note_text = note[source_field]
         except KeyError:
-            return None
+            return None, "field_missing"
 
         if not note_text:
-            return None
+            return None, "field_empty"
 
         # Clean the text similar to how it's done in getNoteTextAndSpeaker
         # Remove HTML entities and tags
@@ -513,7 +528,11 @@ class MyDialog(qt.QDialog):
             if language_code in {"ja", "zh"}:
                 note_text = WHITESPACE_RE.sub("", note_text)
 
-        return note_text.strip() if note_text else None
+        cleaned_text = note_text.strip() if note_text else None
+        if not cleaned_text:
+            return None, "field_empty"
+
+        return cleaned_text, "ok"
 
     def PreviewVoice(self):
         speaker = getSpeaker(self.speaker_combo)
@@ -522,7 +541,17 @@ class MyDialog(qt.QDialog):
 
         # Get the actual text from the first selected note's source field
         source_field = self.source_combo.itemText(self.source_combo.currentIndex())
-        preview_text = self._getPreviewTextFromNote(source_field, speaker)
+        preview_text, status = self._getPreviewTextFromNote(source_field, speaker)
+
+        if status == "field_missing":
+            QMessageBox.warning(
+                self,
+                "Field Not Found",
+                f"The selected note does not have a '{source_field}' field. "
+                "This can happen when previewing against a note type that lacks the source field.\n\n"
+                "Please select a different note that has the source field, or choose a different source field.",
+            )
+            return
 
         if not preview_text:
             QMessageBox.warning(
@@ -722,7 +751,12 @@ def onEdgeTTSOptionSelected(browser):
 
         speaker_combo_text = dialog.speaker_combo.itemText(dialog.speaker_combo.currentIndex())
 
-        # Save previously used stuff
+        # Create the new field if needed (do this before saving config)
+        if new_field_name:
+            addFieldToNoteTypes(new_field_name, dialog.selected_notes)
+            destination_field = new_field_name
+
+        # Save previously used stuff (save the actual destination field name, not the placeholder)
         config = mw.addonManager.getConfig(__name__)
         config["last_source_field"] = source_field
         config["last_destination_field"] = destination_field
@@ -730,11 +764,6 @@ def onEdgeTTSOptionSelected(browser):
         config["last_audio_handling"] = audio_handling_mode
         config["ignore_brackets_enabled"] = dialog.ignore_brackets_checkbox.isChecked()
         mw.addonManager.writeConfig(__name__, config)
-
-        # Create the new field if needed
-        if new_field_name:
-            addFieldToNoteTypes(new_field_name, dialog.selected_notes)
-            destination_field = new_field_name
 
         def getNoteTextAndSpeaker(note_id):
             note = mw.col.get_note(note_id)
@@ -809,6 +838,7 @@ def onEdgeTTSOptionSelected(browser):
             notes_so_far = 0
             skipped_count = 0
             missing_text_skips = 0
+            existing_audio_skips = 0
             pending_items = []
             pending_note_ids = []
             chunk_size = 10
@@ -822,6 +852,7 @@ def onEdgeTTSOptionSelected(browser):
                 if audio_handling_mode == "skip" and existing_content:
                     notes_so_far += 1
                     skipped_count += 1
+                    existing_audio_skips += 1
                     updateProgress(notes_so_far, total_notes, skipped_count)
                     continue
 
@@ -836,12 +867,23 @@ def onEdgeTTSOptionSelected(browser):
                 pending_note_ids.append(note_id)
 
             if not pending_items:
+                # All notes were skipped - show summary
+                if existing_audio_skips > 0 or missing_text_skips > 0:
+                    skip_messages = []
+                    if existing_audio_skips > 0:
+                        skip_messages.append(f"{existing_audio_skips} already had audio")
+                    if missing_text_skips > 0:
+                        skip_messages.append(f"{missing_text_skips} had no source text")
+                    mw.taskman.run_on_main(
+                        lambda: tooltip(f"No audio generated. Skipped notes: {', '.join(skip_messages)}.")
+                    )
                 return
 
             canceled = False
             failures: list[str] = []
             for chunk_start in range(0, len(pending_items), chunk_size):
                 if mw.progress.want_cancel():
+                    canceled = True
                     break
 
                 chunk_items = pending_items[chunk_start : chunk_start + chunk_size]
@@ -900,12 +942,24 @@ def onEdgeTTSOptionSelected(browser):
                         break
 
                 if canceled or mw.progress.want_cancel():
+                    canceled = True
                     break
 
-            if missing_text_skips > 0:
+            # If cancelled, show cancellation message and don't show other summaries
+            if canceled:
                 mw.taskman.run_on_main(
-                    lambda: tooltip(f"Skipped {missing_text_skips} notes with no text in the source field.")
+                    lambda: tooltip(f"Generation cancelled. {notes_so_far}/{total_notes} notes processed.")
                 )
+                return
+
+            # Show skip summary if any notes were skipped
+            if existing_audio_skips > 0 or missing_text_skips > 0:
+                skip_messages = []
+                if existing_audio_skips > 0:
+                    skip_messages.append(f"{existing_audio_skips} already had audio")
+                if missing_text_skips > 0:
+                    skip_messages.append(f"{missing_text_skips} had no source text")
+                mw.taskman.run_on_main(lambda: tooltip(f"Skipped notes: {', '.join(skip_messages)}."))
 
             if failures:
                 failure_summary = "\n".join(f"- {failure}" for failure in failures)
