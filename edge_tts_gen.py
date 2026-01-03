@@ -609,6 +609,8 @@ def GenerateAudioBatch(text_speaker_items, config):
     pitch = f"{config.get('pitch_slider_value', 0):+}Hz"
     rate = f"{config.get('speed_slider_value', 0):+}%"
     volume = f"{config.get('volume_slider_value', 0):+}%"
+    stream_timeout_seconds = config.get("stream_timeout_seconds", 30.0)
+    stream_timeout_retries = config.get("stream_timeout_retries", 1)
     # All items share the same voice; take the first entry
     voice = text_speaker_items[0][2]
 
@@ -626,6 +628,10 @@ def GenerateAudioBatch(text_speaker_items, config):
         rate,
         "--volume",
         volume,
+        "--stream-timeout",
+        str(stream_timeout_seconds),
+        "--stream-timeout-retries",
+        str(stream_timeout_retries),
     ]
 
     try:

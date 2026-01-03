@@ -33,6 +33,8 @@ class TestArgumentParsing:
         parser.add_argument("--pitch", required=True)
         parser.add_argument("--rate", required=True)
         parser.add_argument("--volume", required=True)
+        parser.add_argument("--stream-timeout", type=float, default=30.0)
+        parser.add_argument("--stream-timeout-retries", type=int, default=1)
         return parser
 
     def test_parser_requires_text_file(self):
@@ -116,6 +118,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             # Mock edge_tts.Communicate
@@ -150,6 +154,8 @@ class TestSynthesizeFunction:
                 pitch="+10Hz",
                 rate="-5%",
                 volume="+20%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             mock_tts = MagicMock()
@@ -187,6 +193,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             mock_tts = MagicMock()
@@ -220,6 +228,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             mock_tts = MagicMock()
@@ -243,6 +253,42 @@ class TestSynthesizeFunction:
         finally:
             os.unlink(text_file)
 
+    def test_synthesize_retries_on_timeout(self):
+        """Synthesize should retry when the stream times out before failing."""
+        args = argparse.Namespace(
+            text_file=None,
+            voice="en-US-JennyNeural",
+            pitch="+0Hz",
+            rate="+0%",
+            volume="+0%",
+            stream_timeout=0.01,
+            stream_timeout_retries=1,
+        )
+
+        external_tts_runner = _load_external_tts_runner()
+        attempts = 0
+
+        class HangingTTS:
+            async def stream(self):
+                while True:
+                    await asyncio.sleep(0.1)
+                    if False:
+                        yield {"type": "audio", "data": b""}
+
+        def make_tts(*_args, **_kwargs):
+            nonlocal attempts
+            attempts += 1
+            return HangingTTS()
+
+        with patch.object(
+            external_tts_runner.edge_tts, "Communicate", side_effect=make_tts
+        ):
+            with pytest.raises(RuntimeError) as excinfo:
+                asyncio.run(external_tts_runner.synthesize_text("hello", args))
+
+        assert "Timed out after" in str(excinfo.value)
+        assert attempts == 2  # initial attempt + one retry
+
     def test_synthesize_batch_encodes_audio(self):
         """Synthesize batch should return base64-encoded audio per item."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
@@ -256,6 +302,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             external_tts_runner = _load_external_tts_runner()
@@ -298,6 +346,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             external_tts_runner = _load_external_tts_runner()
@@ -347,6 +397,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             external_tts_runner = _load_external_tts_runner()
@@ -388,6 +440,8 @@ class TestSynthesizeFunction:
                 pitch="+0Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             external_tts_runner = _load_external_tts_runner()
@@ -475,6 +529,8 @@ class TestVoiceParameters:
                 pitch="-20Hz",
                 rate="+0%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             mock_tts = MagicMock()
@@ -507,6 +563,8 @@ class TestVoiceParameters:
                 pitch="+0Hz",
                 rate="-50%",
                 volume="+0%",
+                stream_timeout=30.0,
+                stream_timeout_retries=1,
             )
 
             mock_tts = MagicMock()
