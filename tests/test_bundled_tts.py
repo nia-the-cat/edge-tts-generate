@@ -148,9 +148,7 @@ class TestTTSItemDataclass:
         item = bundled_tts.TTSItem(identifier="item-1", text="Hello")
         assert item.voice is None
 
-        item_with_voice = bundled_tts.TTSItem(
-            identifier="item-2", text="Hello", voice="en-US-GuyNeural"
-        )
+        item_with_voice = bundled_tts.TTSItem(identifier="item-2", text="Hello", voice="en-US-GuyNeural")
         assert item_with_voice.voice == "en-US-GuyNeural"
 
     def test_identifier_can_be_any_string(self):
@@ -324,12 +322,8 @@ class TestTTSConfigEquality:
         """Two TTSConfig instances with same values should be equal."""
         bundled_tts = _load_bundled_tts()
 
-        config1 = bundled_tts.TTSConfig(
-            voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%"
-        )
-        config2 = bundled_tts.TTSConfig(
-            voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%"
-        )
+        config1 = bundled_tts.TTSConfig(voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%")
+        config2 = bundled_tts.TTSConfig(voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%")
 
         assert config1 == config2
 
@@ -337,12 +331,8 @@ class TestTTSConfigEquality:
         """Two TTSConfig instances with different values should not be equal."""
         bundled_tts = _load_bundled_tts()
 
-        config1 = bundled_tts.TTSConfig(
-            voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%"
-        )
-        config2 = bundled_tts.TTSConfig(
-            voice="en-US-GuyNeural", pitch="+0Hz", rate="+0%", volume="+0%"
-        )
+        config1 = bundled_tts.TTSConfig(voice="en-US-JennyNeural", pitch="+0Hz", rate="+0%", volume="+0%")
+        config2 = bundled_tts.TTSConfig(voice="en-US-GuyNeural", pitch="+0Hz", rate="+0%", volume="+0%")
 
         assert config1 != config2
 

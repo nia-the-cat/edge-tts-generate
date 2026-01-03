@@ -17,6 +17,7 @@ import pytest
 # Helper function used across tests
 # ==============================================================================
 
+
 def _get_speaker_list(config):
     """Extract speakers from config - mirrors getSpeakerList logic."""
     speakers = []
@@ -56,6 +57,7 @@ def _get_common_fields(selected_notes, get_note_func):
 # Tests for getSpeakerList logic
 # ==============================================================================
 
+
 class TestGetSpeakerListLogic:
     """Test the getSpeakerList logic pattern."""
 
@@ -84,6 +86,7 @@ class TestGetSpeakerListLogic:
 # Tests for getSpeaker logic
 # ==============================================================================
 
+
 class TestGetSpeakerLogic:
     """Test the getSpeaker logic pattern."""
 
@@ -107,6 +110,7 @@ class TestGetSpeakerLogic:
 # ==============================================================================
 # Tests for text processing regex patterns
 # ==============================================================================
+
 
 class TestTextProcessingRegex:
     """Test the text processing regex patterns used in the module.
@@ -157,6 +161,7 @@ class TestTextProcessingRegex:
 # ==============================================================================
 # Tests for getCommonFields logic
 # ==============================================================================
+
 
 class TestGetCommonFieldsLogic:
     """Test the getCommonFields logic pattern."""
