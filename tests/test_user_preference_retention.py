@@ -80,19 +80,19 @@ class TestPreferenceDefaults:
     def test_missing_last_speaker_name_defaults_to_none(self):
         """Missing speaker name should default to None (first speaker used)."""
         config = {}
-        last_speaker = config.get("last_speaker_name") or None
+        last_speaker = config.get("last_speaker_name")
         assert last_speaker is None
 
     def test_missing_last_source_field_defaults_to_none(self):
         """Missing source field should default to None (smart detection used)."""
         config = {}
-        last_source = config.get("last_source_field") or None
+        last_source = config.get("last_source_field")
         assert last_source is None
 
     def test_missing_last_destination_field_defaults_to_none(self):
         """Missing destination field should default to None (smart detection used)."""
         config = {}
-        last_destination = config.get("last_destination_field") or None
+        last_destination = config.get("last_destination_field")
         assert last_destination is None
 
     def test_missing_audio_handling_defaults_to_append(self):
@@ -110,19 +110,19 @@ class TestPreferenceDefaults:
     def test_missing_pitch_slider_defaults_to_zero(self):
         """Missing pitch slider should default to 0."""
         config = {}
-        pitch = config.get("pitch_slider_value") or 0
+        pitch = config.get("pitch_slider_value", 0)
         assert pitch == 0
 
     def test_missing_speed_slider_defaults_to_zero(self):
         """Missing speed slider should default to 0."""
         config = {}
-        speed = config.get("speed_slider_value") or 0
+        speed = config.get("speed_slider_value", 0)
         assert speed == 0
 
     def test_missing_volume_slider_defaults_to_zero(self):
         """Missing volume slider should default to 0."""
         config = {}
-        volume = config.get("volume_slider_value") or 0
+        volume = config.get("volume_slider_value", 0)
         assert volume == 0
 
 
@@ -454,33 +454,33 @@ class TestSliderValueRetention:
     def test_positive_pitch_value_is_restored(self):
         """Positive pitch value should be correctly restored."""
         config = {"pitch_slider_value": 25}
-        pitch = config.get("pitch_slider_value") or 0
+        pitch = config.get("pitch_slider_value", 0)
         assert pitch == 25
 
     def test_negative_pitch_value_is_restored(self):
         """Negative pitch value should be correctly restored."""
         config = {"pitch_slider_value": -30}
-        pitch = config.get("pitch_slider_value") or 0
+        pitch = config.get("pitch_slider_value", 0)
         assert pitch == -30
 
     def test_zero_pitch_value_is_restored(self):
         """Zero pitch value should be correctly restored (not replaced with default)."""
         config = {"pitch_slider_value": 0}
-        # Using 'or 0' would incorrectly treat 0 as falsy
-        # The actual code uses 'or 0' which is a potential bug
-        pitch = config.get("pitch_slider_value") or 0
-        assert pitch == 0  # This works because 0 or 0 = 0
+        # Using config.get(key, default) properly handles 0 values
+        # Unlike 'or 0' which would treat 0 as falsy
+        pitch = config.get("pitch_slider_value", 0)
+        assert pitch == 0
 
     def test_positive_speed_value_is_restored(self):
         """Positive speed value should be correctly restored."""
         config = {"speed_slider_value": 15}
-        speed = config.get("speed_slider_value") or 0
+        speed = config.get("speed_slider_value", 0)
         assert speed == 15
 
     def test_negative_volume_value_is_restored(self):
         """Negative volume value should be correctly restored."""
         config = {"volume_slider_value": -75}
-        volume = config.get("volume_slider_value") or 0
+        volume = config.get("volume_slider_value", 0)
         assert volume == -75
 
     def test_slider_values_at_boundaries(self):
@@ -491,9 +491,9 @@ class TestSliderValueRetention:
             "volume_slider_value": 100,  # max
         }
 
-        assert config.get("pitch_slider_value") == 50
-        assert config.get("speed_slider_value") == -50
-        assert config.get("volume_slider_value") == 100
+        assert config.get("pitch_slider_value", 0) == 50
+        assert config.get("speed_slider_value", 0) == -50
+        assert config.get("volume_slider_value", 0) == 100
 
 
 # ==============================================================================
