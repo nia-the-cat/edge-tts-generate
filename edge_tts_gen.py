@@ -770,6 +770,18 @@ def onEdgeTTSOptionSelected(browser):
                 return ""
 
         def on_done(future):
+            try:
+                future.result()
+            except Exception as exc:  # noqa: BLE001
+                mw.progress.finish()
+                mw.reset()
+                QMessageBox.critical(
+                    mw,
+                    "Edge TTS Generation Failed",
+                    f"An error occurred while generating audio: {exc}",
+                )
+                return
+
             mw.progress.finish()
             mw.reset()
 
