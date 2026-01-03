@@ -307,7 +307,7 @@ class AudioGenDialog(qt.QDialog):
         volume_slider = QSlider(qt.Qt.Orientation.Horizontal)
         volume_slider.setMinimum(-100)
         volume_slider.setMaximum(100)
-        volume_slider.setValue(config.get("volume_slider_value") or 0)
+        volume_slider.setValue(config.get("volume_slider_value", 0))
         volume_slider.setToolTip("Adjust the volume of the generated audio (-100% to +100%)")
         self.volume_slider = volume_slider
         volume_slider.valueChanged.connect(
@@ -321,7 +321,7 @@ class AudioGenDialog(qt.QDialog):
         pitch_slider = QSlider(qt.Qt.Orientation.Horizontal)
         pitch_slider.setMinimum(-50)
         pitch_slider.setMaximum(50)
-        pitch_slider.setValue(config.get("pitch_slider_value") or 0)
+        pitch_slider.setValue(config.get("pitch_slider_value", 0))
         pitch_slider.setToolTip("Adjust the pitch of the voice (-50Hz to +50Hz)")
         self.pitch_slider = pitch_slider
         pitch_slider.valueChanged.connect(update_slider(pitch_slider, pitch_label, "pitch_slider_value", "Pitch", "Hz"))
@@ -333,7 +333,7 @@ class AudioGenDialog(qt.QDialog):
         speed_slider = QSlider(qt.Qt.Orientation.Horizontal)
         speed_slider.setMinimum(-50)
         speed_slider.setMaximum(50)
-        speed_slider.setValue(config.get("speed_slider_value") or 0)
+        speed_slider.setValue(config.get("speed_slider_value", 0))
         speed_slider.setToolTip("Adjust the speaking rate (-50% to +50%)")
         self.speed_slider = speed_slider
         speed_slider.valueChanged.connect(update_slider(speed_slider, speed_label, "speed_slider_value", "Speed", "%"))

@@ -26,6 +26,7 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 - 🚀 **Zero Setup** - All dependencies bundled, works out of the box
 - 📝 **Smart Text Processing** - Handles HTML, brackets, and special characters
 - 💻 **Cross-Platform** - Works on Windows, macOS, and Linux
+- 💾 **Remember Settings** - All preferences persist across Anki sessions
 
 # Requirements
 
@@ -121,6 +122,18 @@ The add-on comes with 20 pre-configured voices across 10 languages:
 1. Configure your preferences in the dialog
 2. Select source and destination fields
 3. Choose a voice and click "Generate Audio"
+
+### Remembering Your Preferences
+
+The add-on automatically saves all your settings and restores them when you reopen Anki. This includes:
+
+- **Voice selection** - Your last selected voice is remembered
+- **Source and destination fields** - Field choices persist across sessions
+- **Audio handling mode** - Append, overwrite, or skip preference is saved
+- **Voice adjustments** - Pitch, speed, and volume settings are retained
+- **Bracket handling** - Your preference for ignoring bracket content is saved
+
+Settings are saved when you click "Generate Audio" (for most options) or immediately when you adjust sliders. All preferences persist even after completely closing and reopening Anki.
 
 ## Troubleshooting
 
@@ -246,6 +259,7 @@ pytest tests/ -k "test_config"
 | `test_integration.py` | End-to-end integration tests |
 | `test_preview_*.py` | Voice preview functionality |
 | `test_issue_fixes.py` | Regression tests for bug fixes |
+| `test_user_preference_retention.py` | User settings persistence across Anki sessions |
 
 ### CI/CD Pipeline
 
