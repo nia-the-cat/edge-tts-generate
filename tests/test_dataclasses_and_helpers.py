@@ -572,3 +572,37 @@ class TestUIFeatures:
         assert "overwrite" in modes
         assert "skip" in modes
         assert len(modes) == 3
+
+
+class TestSessionState:
+    """Test session state for confirmation dialogs."""
+
+    def test_session_state_class_exists(self):
+        """Session state class should exist for storing confirmation preferences."""
+        from edge_tts_gen import _SessionState
+
+        assert _SessionState is not None
+
+    def test_session_state_has_skip_overwrite_confirmation(self):
+        """Session state should have skip_overwrite_confirmation attribute."""
+        from edge_tts_gen import _SessionState
+
+        state = _SessionState()
+        assert hasattr(state, "skip_overwrite_confirmation")
+        # Default should be False (show confirmation)
+        assert state.skip_overwrite_confirmation is False
+
+    def test_session_state_can_be_modified(self):
+        """Session state skip_overwrite_confirmation should be modifiable."""
+        from edge_tts_gen import _SessionState
+
+        state = _SessionState()
+        state.skip_overwrite_confirmation = True
+        assert state.skip_overwrite_confirmation is True
+
+    def test_module_level_session_state_instance_exists(self):
+        """Module should have a session state instance for tracking state."""
+        from edge_tts_gen import _session_state
+
+        assert _session_state is not None
+        assert hasattr(_session_state, "skip_overwrite_confirmation")
