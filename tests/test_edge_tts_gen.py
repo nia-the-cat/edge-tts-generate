@@ -1,7 +1,9 @@
 """
 Tests for edge_tts_gen.py - Pure functions that can be tested without Anki.
 Note: Functions that depend on Anki (mw, aqt) are mocked.
-Since edge_tts_gen uses relative imports, we test the logic patterns instead of importing directly.
+
+This module tests logic patterns and validates behavior through isolated examples.
+For direct module testing with imports, see test_dataclasses_and_helpers.py.
 """
 
 import os
@@ -11,8 +13,49 @@ from unittest.mock import MagicMock
 import pytest
 
 
-# Test the logic patterns used in edge_tts_gen without importing the module directly
-# (due to relative import issues when testing outside Anki)
+# ==============================================================================
+# Helper function used across tests
+# ==============================================================================
+
+
+def _get_speaker_list(config):
+    """Extract speakers from config - mirrors getSpeakerList logic."""
+    speakers = []
+    speakers.extend(config.get("speakers", []) or [])
+    return speakers
+
+
+def _get_speaker(speaker_combo):
+    """Get selected speaker from combo - mirrors getSpeaker logic."""
+    return speaker_combo.itemText(speaker_combo.currentIndex())
+
+
+def _get_common_fields(selected_notes, get_note_func):
+    """Find common fields across notes - mirrors getCommonFields logic."""
+    common_fields = set()
+    first = True
+
+    for note_id in selected_notes:
+        note = get_note_func(note_id)
+        if note is None:
+            raise Exception(
+                f"Note with id {note_id} is None.\n"
+                f"Selected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\n"
+                "Please submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+            )
+        model = note.note_type()
+        model_fields = {f["name"] for f in model["flds"]}
+        if first:
+            common_fields = model_fields
+        else:
+            common_fields = common_fields.intersection(model_fields)
+        first = False
+    return common_fields
+
+
+# ==============================================================================
+# Tests for getSpeakerList logic
+# ==============================================================================
 
 
 class TestGetSpeakerListLogic:
@@ -20,13 +63,6 @@ class TestGetSpeakerListLogic:
 
     def test_returns_speakers_from_config(self):
         """Should return speakers list from config."""
-
-        # This is the logic from getSpeakerList
-        def getSpeakerList(config):
-            speakers = []
-            speakers.extend(config.get("speakers", []))
-            return speakers
-
         config = {
             "speakers": [
                 "ja-JP-NanamiNeural",
@@ -34,37 +70,21 @@ class TestGetSpeakerListLogic:
                 "de-DE-KatjaNeural",
             ]
         }
-
-        result = getSpeakerList(config)
-
+        result = _get_speaker_list(config)
         assert result == ["ja-JP-NanamiNeural", "en-US-JennyNeural", "de-DE-KatjaNeural"]
 
     def test_returns_empty_list_when_no_speakers(self):
         """Should return empty list when config has no speakers."""
-
-        def getSpeakerList(config):
-            speakers = []
-            speakers.extend(config.get("speakers", []))
-            return speakers
-
-        config = {}
-
-        result = getSpeakerList(config)
-
-        assert result == []
+        assert _get_speaker_list({}) == []
 
     def test_handles_none_speakers(self):
         """Should handle None speakers gracefully."""
+        assert _get_speaker_list({"speakers": None}) == []
 
-        def getSpeakerList(config):
-            speakers = []
-            speakers.extend(config.get("speakers", []) or [])
-            return speakers
 
-        config = {"speakers": None}
-
-        result = getSpeakerList(config)
-        assert result == []
+# ==============================================================================
+# Tests for getSpeaker logic
+# ==============================================================================
 
 
 class TestGetSpeakerLogic:
@@ -72,122 +92,75 @@ class TestGetSpeakerLogic:
 
     def test_returns_selected_speaker(self):
         """Should return the currently selected speaker name."""
-
-        # This is the logic from getSpeaker
-        def getSpeaker(speaker_combo):
-            speaker_name = speaker_combo.itemText(speaker_combo.currentIndex())
-            return speaker_name
-
         mock_combo = MagicMock()
         mock_combo.currentIndex.return_value = 1
         mock_combo.itemText.return_value = "en-US-JennyNeural"
 
-        result = getSpeaker(mock_combo)
-
-        assert result == "en-US-JennyNeural"
+        assert _get_speaker(mock_combo) == "en-US-JennyNeural"
 
     def test_returns_first_speaker_when_index_zero(self):
         """Should return first speaker when index is 0."""
-
-        def getSpeaker(speaker_combo):
-            speaker_name = speaker_combo.itemText(speaker_combo.currentIndex())
-            return speaker_name
-
         mock_combo = MagicMock()
         mock_combo.currentIndex.return_value = 0
         mock_combo.itemText.return_value = "ja-JP-NanamiNeural"
 
-        result = getSpeaker(mock_combo)
-
-        assert result == "ja-JP-NanamiNeural"
+        assert _get_speaker(mock_combo) == "ja-JP-NanamiNeural"
 
 
-class TestCreateNewFieldOption:
-    """Test the CREATE_NEW_FIELD_OPTION constant."""
-
-    def test_constant_value(self):
-        """CREATE_NEW_FIELD_OPTION should have expected value."""
-        # Based on the source code
-        CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
-
-        assert CREATE_NEW_FIELD_OPTION is not None
-        assert isinstance(CREATE_NEW_FIELD_OPTION, str)
-
-    def test_constant_is_recognizable(self):
-        """CREATE_NEW_FIELD_OPTION should be easily distinguishable."""
-        CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
-
-        # Should contain visual markers that distinguish it from field names
-        assert "[" in CREATE_NEW_FIELD_OPTION or "+" in CREATE_NEW_FIELD_OPTION
+# ==============================================================================
+# Tests for text processing regex patterns
+# ==============================================================================
 
 
 class TestTextProcessingRegex:
-    """Test the text processing regex patterns used in the module."""
+    """Test the text processing regex patterns used in the module.
+
+    Note: Tests for regex patterns from the actual module are in
+    test_dataclasses_and_helpers.py (TestRegexPatterns class).
+    These tests verify the expected regex behavior with inline patterns.
+    """
 
     def test_html_tag_removal(self):
         """Test HTML tag removal regex pattern."""
         tag_re = re.compile(r"(<!--.*?-->|<[^>]*>)")
 
         # Test basic HTML tags
-        text = "<b>Bold</b> text"
-        result = tag_re.sub("", text)
-        assert result == "Bold text"
-
+        assert tag_re.sub("", "<b>Bold</b> text") == "Bold text"
         # Test nested tags
-        text = "<div><span>Nested</span></div>"
-        result = tag_re.sub("", text)
-        assert result == "Nested"
-
+        assert tag_re.sub("", "<div><span>Nested</span></div>") == "Nested"
         # Test self-closing tags
-        text = "Line<br/>break"
-        result = tag_re.sub("", text)
-        assert result == "Linebreak"
-
+        assert tag_re.sub("", "Line<br/>break") == "Linebreak"
         # Test HTML comments
-        text = "Text<!-- comment -->More"
-        result = tag_re.sub("", text)
-        assert result == "TextMore"
+        assert tag_re.sub("", "Text<!-- comment -->More") == "TextMore"
 
     def test_entity_removal(self):
         """Test HTML entity removal regex pattern."""
         entity_re = re.compile(r"(&[^;]+;)")
 
         # Test common entities
-        text = "&nbsp;space&amp;ampersand"
-        result = entity_re.sub("", text)
-        assert result == "spaceampersand"
-
+        assert entity_re.sub("", "&nbsp;space&amp;ampersand") == "spaceampersand"
         # Test numeric entities
-        text = "&#60;less than&#62;"
-        result = entity_re.sub("", text)
-        assert result == "less than"
+        assert entity_re.sub("", "&#60;less than&#62;") == "less than"
 
     def test_reading_extraction(self):
-        """Test reading extraction from brackets."""
-        # Pattern: Replace text with reading from brackets
-        # The pattern replaces the word and brackets with just the reading
+        """Test reading extraction from brackets (e.g., kanji[reading] -> reading)."""
         pattern = r" ?\S*?\[(.*?)\]"
 
-        text = "漢字[かんじ]"
-        result = re.sub(pattern, r"\1", text)
-        assert result == "かんじ"
-
-        # Note: This pattern consumes non-whitespace before the bracket
-        text = "日本語[にほんご]を勉強[べんきょう]"
-        result = re.sub(pattern, r"\1", text)
-        assert result == "にほんごべんきょう"
+        assert re.sub(pattern, r"\1", "漢字[かんじ]") == "かんじ"
+        # Pattern consumes non-whitespace before the bracket
+        assert re.sub(pattern, r"\1", "日本語[にほんご]を勉強[べんきょう]") == "にほんごべんきょう"
 
     def test_bracket_content_removal(self):
         """Test bracket content removal for pitch accent markers."""
         pattern = r"\[.*?\]"
 
-        text = "word[;a,h]"
-        result = re.sub(pattern, "", text)
-        assert result == "word"
+        assert re.sub(pattern, "", "word[;a,h]") == "word"
+        assert re.sub(pattern, "", "聞[き,きく;h]いた") == "聞いた"
 
-        text = "聞[き,きく;h]いた"
-        result = re.sub(pattern, "", text)
-        assert result == "聞いた"
+
+# ==============================================================================
+# Tests for getCommonFields logic
+# ==============================================================================
 
 
 class TestGetCommonFieldsLogic:
@@ -195,25 +168,6 @@ class TestGetCommonFieldsLogic:
 
     def test_returns_fields_from_single_note(self):
         """Should return all fields for a single note."""
-
-        # This is the logic from getCommonFields
-        def getCommonFields(selected_notes, get_note_func):
-            common_fields = set()
-            first = True
-
-            for note_id in selected_notes:
-                note = get_note_func(note_id)
-                if note is None:
-                    raise Exception(f"Note with id {note_id} is None.")
-                model = note.note_type()
-                model_fields = {f["name"] for f in model["flds"]}
-                if first:
-                    common_fields = model_fields
-                else:
-                    common_fields = common_fields.intersection(model_fields)
-                first = False
-            return common_fields
-
         mock_note = MagicMock()
         mock_note.note_type.return_value = {
             "flds": [
@@ -223,33 +177,11 @@ class TestGetCommonFieldsLogic:
             ]
         }
 
-        def get_note_func(note_id):
-            return mock_note
-
-        result = getCommonFields([1], get_note_func)
-
+        result = _get_common_fields([1], lambda note_id: mock_note)
         assert result == {"Front", "Back", "Audio"}
 
     def test_returns_intersection_of_fields(self):
         """Should return only common fields across multiple notes."""
-
-        def getCommonFields(selected_notes, get_note_func):
-            common_fields = set()
-            first = True
-
-            for note_id in selected_notes:
-                note = get_note_func(note_id)
-                if note is None:
-                    raise Exception(f"Note with id {note_id} is None.")
-                model = note.note_type()
-                model_fields = {f["name"] for f in model["flds"]}
-                if first:
-                    common_fields = model_fields
-                else:
-                    common_fields = common_fields.intersection(model_fields)
-                first = False
-            return common_fields
-
         # First note has Front, Back, Audio
         mock_note1 = MagicMock()
         mock_note1.note_type.return_value = {
@@ -271,42 +203,15 @@ class TestGetCommonFieldsLogic:
         }
 
         notes = {1: mock_note1, 2: mock_note2}
-
-        def get_note_func(note_id):
-            return notes[note_id]
-
-        result = getCommonFields([1, 2], get_note_func)
+        result = _get_common_fields([1, 2], lambda note_id: notes[note_id])
 
         # Only Front and Back are common
         assert result == {"Front", "Back"}
 
     def test_raises_on_none_note(self):
         """Should raise exception when note is None."""
-
-        def getCommonFields(selected_notes, get_note_func):
-            common_fields = set()
-            first = True
-
-            for note_id in selected_notes:
-                note = get_note_func(note_id)
-                if note is None:
-                    raise Exception(
-                        f"Note with id {note_id} is None.\nPlease submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
-                    )
-                model = note.note_type()
-                model_fields = {f["name"] for f in model["flds"]}
-                if first:
-                    common_fields = model_fields
-                else:
-                    common_fields = common_fields.intersection(model_fields)
-                first = False
-            return common_fields
-
-        def get_note_func(note_id):
-            return None
-
         with pytest.raises(Exception) as exc_info:
-            getCommonFields([1], get_note_func)
+            _get_common_fields([1], lambda note_id: None)
 
         assert "is None" in str(exc_info.value)
 

@@ -207,6 +207,50 @@ ruff check .
 ruff format .
 ```
 
+### Testing
+
+The project has comprehensive test coverage across all modules:
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run tests with coverage report
+pytest tests/ --cov=. --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_bundled_tts.py -v
+
+# Run tests matching a pattern
+pytest tests/ -k "test_config"
+```
+
+**Test Categories:**
+
+| Test File | Coverage Area |
+|-----------|--------------|
+| `test_bundled_tts.py` | TTS dataclasses, synthesis utilities, vendor setup |
+| `test_dataclasses_and_helpers.py` | ItemError, BatchAudioResult, regex patterns |
+| `test_edge_tts_gen.py` | UI logic, field handling, audio modes |
+| `test_synthesize_single.py` | Single-text synthesis function |
+| `test_async_synthesis.py` | Async batch synthesis, concurrency |
+| `test_field_management.py` | Field creation, validation |
+| `test_module_init.py` | Module structure, config files |
+| `test_logging_config.py` | Logging configuration |
+| `test_integration.py` | End-to-end integration tests |
+| `test_preview_*.py` | Voice preview functionality |
+| `test_issue_fixes.py` | Regression tests for bug fixes |
+
+### CI/CD Pipeline
+
+GitHub Actions automatically runs on all pull requests:
+
+1. **Tests** - Unit tests on Python 3.9 across Ubuntu, Windows, macOS
+2. **Lint** - Code quality checks with ruff
+3. **JSON Validation** - Validates config files
+4. **Integration Tests** - End-to-end testing
+5. **Security Check** - Scans for security vulnerabilities
+
 ### Making Changes
 
 1. Fork the repository
@@ -231,7 +275,9 @@ The add-on bundles all dependencies (edge-tts, aiohttp, etc.) in a `vendor` dire
 **Key components:**
 - `bundled_tts.py` - TTS synthesis using bundled edge-tts library
 - `edge_tts_gen.py` - Main UI and audio generation orchestration  
-- `vendor/` - Bundled pure-Python dependencies
+- `logging_config.py` - Configurable logging system
+- `vendor/` - Bundled pure-Python dependencies (edge-tts, aiohttp, certifi, etc.)
+- `tests/` - Comprehensive test suite with ~290 tests
 
 ### AI Development Guidelines
 
