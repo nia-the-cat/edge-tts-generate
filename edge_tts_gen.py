@@ -9,6 +9,7 @@ from os.path import dirname, join
 from aqt import mw, qt
 from aqt.qt import (
     QButtonGroup,
+    QGroupBox,
     QInputDialog,
     QLabel,
     QMessageBox,
@@ -88,7 +89,9 @@ def getSpeaker(speaker_combo):
     return speaker_name
 
 
-class MyDialog(qt.QDialog):
+class AudioGenDialog(qt.QDialog):
+    """Dialog for configuring and generating TTS audio for Anki notes."""
+
     def __init__(self, browser, parent=None) -> None:
         super().__init__(parent)
         self.browser = browser
@@ -96,13 +99,17 @@ class MyDialog(qt.QDialog):
         self.new_field_name = None  # Track if user wants to create a new field
         self._preview_cache = None  # Cache for preview audio
 
+        # Set descriptive window title
+        self.setWindowTitle("Edge TTS Audio Generator")
+
         config = mw.addonManager.getConfig(__name__)
 
-        layout = qt.QVBoxLayout()
+        # Main layout - vertical arrangement of grouped sections
+        main_layout = qt.QVBoxLayout()
 
-        layout.addWidget(qt.QLabel("Selected notes: " + str(len(self.selected_notes))))
-
-        self.grid_layout = qt.QGridLayout()
+        # Header - show selected notes count
+        header_label = qt.QLabel(f"<b>Selected notes:</b> {len(self.selected_notes)}")
+        main_layout.addWidget(header_label)
 
         self.common_fields = getCommonFields(self.selected_notes)
 
@@ -114,6 +121,10 @@ class MyDialog(qt.QDialog):
             )
             self.reject()
             return
+
+        # ===== SECTION 1: Field Selection =====
+        fields_group = QGroupBox("Field Selection")
+        fields_layout = qt.QGridLayout()
 
         self.source_combo = qt.QComboBox()
         self.destination_combo = qt.QComboBox()
@@ -148,38 +159,47 @@ class MyDialog(qt.QDialog):
         # Track destination selection for restoring after cancelled "Create new field" dialog
         self._previous_destination_index = destination_field_index
 
-        source_label = qt.QLabel("Source field: ")
+        source_label = qt.QLabel("Source field:")
         source_tooltip = "The field to read from. For example if your sentence is in the field 'Expression' you want to choose 'Expression' as the source field to read from"
         source_label.setToolTip(source_tooltip)
+        self.source_combo.setToolTip(source_tooltip)
 
-        destination_label = qt.QLabel("Destination field: ")
+        destination_label = qt.QLabel("Destination field:")
         destination_tooltip = "The field to write the audio to. Typically you want to choose a field like 'Audio' or 'Audio on Front' or wherever you want the audio placed on your card. Select '[ + Create new field... ]' to add a new audio field."
         destination_label.setToolTip(destination_tooltip)
-
-        self.source_combo.setToolTip(source_tooltip)
         self.destination_combo.setToolTip(destination_tooltip)
 
-        self.grid_layout.addWidget(source_label, 0, 0)
-        self.grid_layout.addWidget(self.source_combo, 0, 1)
-        self.grid_layout.addWidget(destination_label, 0, 2)
-        self.grid_layout.addWidget(self.destination_combo, 0, 3)
+        fields_layout.addWidget(source_label, 0, 0)
+        fields_layout.addWidget(self.source_combo, 0, 1)
+        fields_layout.addWidget(destination_label, 1, 0)
+        fields_layout.addWidget(self.destination_combo, 1, 1)
 
-        # Audio handling options (radio buttons)
-        audio_options_label = qt.QLabel("When destination field has content:")
-        audio_options_label.setToolTip("Choose how to handle existing content in the destination field")
-        self.grid_layout.addWidget(audio_options_label, 1, 0, 1, 2)
+        # Ignore brackets checkbox - place in field selection since it affects text processing
+        self.ignore_brackets_checkbox = qt.QCheckBox("Ignore content in brackets [...]")
+        self.ignore_brackets_checkbox.setToolTip(
+            "Ignores things between brackets. Some flashcard formats use brackets for readings, pitch accent, or other metadata. Leave this checked unless you want bracket contents read aloud."
+        )
+        self.ignore_brackets_checkbox.setChecked(config.get("ignore_brackets_enabled", True))
+        fields_layout.addWidget(self.ignore_brackets_checkbox, 2, 0, 1, 2)
+
+        fields_group.setLayout(fields_layout)
+        main_layout.addWidget(fields_group)
+
+        # ===== SECTION 2: Audio Handling Options =====
+        handling_group = QGroupBox("When Destination Field Has Content")
+        handling_layout = qt.QVBoxLayout()
 
         self.audio_handling_group = QButtonGroup(self)
 
-        self.append_radio = QRadioButton("Append (keep existing content)")
+        self.append_radio = QRadioButton("Append - Keep existing content and add new audio")
         self.append_radio.setToolTip(
             "Add the generated audio to the field without removing any existing content. This is the safest option."
         )
 
-        self.overwrite_radio = QRadioButton("Overwrite (replace content)")
+        self.overwrite_radio = QRadioButton("Overwrite - Replace existing content with new audio")
         self.overwrite_radio.setToolTip("Replace the entire content of the destination field with the new audio")
 
-        self.skip_radio = QRadioButton("Skip (if audio exists)")
+        self.skip_radio = QRadioButton("Skip - Don't generate if content already exists")
         self.skip_radio.setToolTip("Skip generating audio for notes that already have content in the destination field")
 
         self.audio_handling_group.addButton(self.append_radio, 0)
@@ -195,31 +215,35 @@ class MyDialog(qt.QDialog):
         else:
             self.append_radio.setChecked(True)  # Default to append
 
-        audio_options_layout = qt.QHBoxLayout()
-        audio_options_layout.addWidget(self.append_radio)
-        audio_options_layout.addWidget(self.overwrite_radio)
-        audio_options_layout.addWidget(self.skip_radio)
+        handling_layout.addWidget(self.append_radio)
+        handling_layout.addWidget(self.overwrite_radio)
+        handling_layout.addWidget(self.skip_radio)
 
-        self.grid_layout.addLayout(audio_options_layout, 1, 2, 1, 3)
+        handling_group.setLayout(handling_layout)
+        main_layout.addWidget(handling_group)
 
-        # TODO: Does anyone actually want to not ignore stuff in brackets? The checkbox is here if we need it but I don't think anyone wants brackets to be read
-        self.ignore_brackets_checkbox = qt.QCheckBox("Ignore stuff in brackets [...]")
-        self.ignore_brackets_checkbox.setToolTip(
-            "Ignores things between brackets. Some flashcard formats use brackets for readings, pitch accent, or other metadata. Leave this checked unless you want bracket contents read aloud."
-        )
-        self.ignore_brackets_checkbox.setChecked(config.get("ignore_brackets_enabled", True))
-        self.grid_layout.addWidget(self.ignore_brackets_checkbox, 0, 4)
+        # ===== SECTION 3: Voice Selection =====
+        voice_group = QGroupBox("Voice Selection")
+        voice_layout = qt.QGridLayout()
 
-        self.grid_layout.addWidget(qt.QLabel("Speaker: "), 2, 0)
         self.speakers = getSpeakerList(config)
         self.speaker_combo = qt.QComboBox()
         for speaker in self.speakers:
             self.speaker_combo.addItem(speaker)
-        self.grid_layout.addWidget(self.speaker_combo, 2, 1)
+
+        speaker_label = qt.QLabel("Voice:")
+        voice_layout.addWidget(speaker_label, 0, 0)
+        voice_layout.addWidget(self.speaker_combo, 0, 1)
+
+        self.preview_voice_button = qt.QPushButton("Preview Voice")
+        self.preview_voice_button.setToolTip(
+            "Preview the selected voice using text from the selected note's source field. First preview may take a few seconds to initialize the speech engine."
+        )
+        self.preview_voice_button.clicked.connect(self.PreviewVoice)
+        voice_layout.addWidget(self.preview_voice_button, 0, 2)
 
         self.speaker_status_label = qt.QLabel()
         self.speaker_status_label.setWordWrap(True)
-        self.grid_layout.addWidget(self.speaker_status_label, 2, 2, 1, 2)
 
         last_speaker_name = config.get("last_speaker_name") or None
 
@@ -241,10 +265,11 @@ class MyDialog(qt.QDialog):
                 "No speakers configured. Add voices in the add-on config to enable generation."
             )
             self.speaker_status_label.setStyleSheet("color: #cc3300;")
+            voice_layout.addWidget(self.speaker_status_label, 1, 0, 1, 3)
 
-        # Preview note selection dropdown
+        # Preview note selection dropdown (only shown when multiple notes selected)
         if len(self.selected_notes) > 1:
-            self.grid_layout.addWidget(qt.QLabel("Preview from note: "), 3, 0)
+            preview_note_label = qt.QLabel("Preview from note:")
             self.preview_note_combo = qt.QComboBox()
             self.preview_note_combo.setToolTip(
                 "Select which note to use for voice preview. Shows a snippet of each note's source field."
@@ -256,37 +281,17 @@ class MyDialog(qt.QDialog):
             # Connect to update when source field changes
             self.source_combo.currentIndexChanged.connect(self._populatePreviewNoteCombo)
             self.source_combo.currentIndexChanged.connect(self._reset_preview_cache)
-
-            self.grid_layout.addWidget(self.preview_note_combo, 3, 1, 1, 2)
             self.preview_note_combo.currentIndexChanged.connect(self._reset_preview_cache)
 
-        self.preview_voice_button = qt.QPushButton("Preview Voice", self)
-        self.preview_voice_button.setToolTip(
-            "Preview the selected voice using text from the selected note's source field. First preview may take a few seconds to initialize the speech engine."
-        )
+            voice_layout.addWidget(preview_note_label, 1, 0)
+            voice_layout.addWidget(self.preview_note_combo, 1, 1, 1, 2)
 
-        self.preview_voice_button.clicked.connect(self.PreviewVoice)
-        # Place preview button on the speaker row (row 2, col 4) for all cases
-        # This avoids overlap with Generate button and logically groups preview with speaker selection
-        self.grid_layout.addWidget(self.preview_voice_button, 2, 4)
+        voice_group.setLayout(voice_layout)
+        main_layout.addWidget(voice_group)
 
-        self.cancel_button = qt.QPushButton("Cancel")
-        self.generate_button = qt.QPushButton("Generate Audio")
-
-        self.cancel_button.clicked.connect(self.reject)
-        self.generate_button.clicked.connect(self.pre_accept)
-
-        # Position buttons on the appropriate row based on whether preview note selector is shown
-        # Row 3 for single note (after speaker row), Row 4 for multiple notes (after preview note combo)
-        button_row = 3 if len(self.selected_notes) <= 1 else 4
-        self.grid_layout.addWidget(self.cancel_button, button_row, 0, 1, 2)
-        self.grid_layout.addWidget(self.generate_button, button_row, 3, 1, 2)
-
-        if self.speaker_combo.count() == 0:
-            self.preview_voice_button.setEnabled(False)
-            self.preview_voice_button.setToolTip("Add speakers in the add-on config to preview a voice.")
-            self.generate_button.setEnabled(False)
-            self.generate_button.setToolTip("Add speakers in the add-on config to generate audio.")
+        # ===== SECTION 4: Voice Adjustments =====
+        adjustments_group = QGroupBox("Voice Adjustments")
+        adjustments_layout = qt.QGridLayout()
 
         def update_slider(slider, label, config_name, slider_desc, slider_unit):
             def update_this_slider(value):
@@ -297,58 +302,74 @@ class MyDialog(qt.QDialog):
 
             return update_this_slider
 
-        # Calculate base row for sliders based on whether preview note selector is shown
-        # Row 4 for single note, Row 5 for multiple notes (after Cancel/Generate buttons)
-        slider_base_row = 4 if len(self.selected_notes) <= 1 else 5
-
+        # Volume slider
+        volume_label = QLabel(f"Volume {config.get('volume_slider_value', 0)}%")
         volume_slider = QSlider(qt.Qt.Orientation.Horizontal)
         volume_slider.setMinimum(-100)
         volume_slider.setMaximum(100)
         volume_slider.setValue(config.get("volume_slider_value") or 0)
+        volume_slider.setToolTip("Adjust the volume of the generated audio (-100% to +100%)")
         self.volume_slider = volume_slider
-
-        volume_label = QLabel(f"Volume scale {volume_slider.value()}%")
-
         volume_slider.valueChanged.connect(
-            update_slider(volume_slider, volume_label, "volume_slider_value", "Volume scale", "%")
+            update_slider(volume_slider, volume_label, "volume_slider_value", "Volume", "%")
         )
+        adjustments_layout.addWidget(volume_label, 0, 0)
+        adjustments_layout.addWidget(volume_slider, 0, 1)
 
-        self.grid_layout.addWidget(volume_label, slider_base_row, 0, 1, 2)
-        self.grid_layout.addWidget(volume_slider, slider_base_row, 3, 1, 2)
-
+        # Pitch slider
+        pitch_label = QLabel(f"Pitch {config.get('pitch_slider_value', 0)}Hz")
         pitch_slider = QSlider(qt.Qt.Orientation.Horizontal)
         pitch_slider.setMinimum(-50)
         pitch_slider.setMaximum(50)
         pitch_slider.setValue(config.get("pitch_slider_value") or 0)
+        pitch_slider.setToolTip("Adjust the pitch of the voice (-50Hz to +50Hz)")
         self.pitch_slider = pitch_slider
+        pitch_slider.valueChanged.connect(update_slider(pitch_slider, pitch_label, "pitch_slider_value", "Pitch", "Hz"))
+        adjustments_layout.addWidget(pitch_label, 1, 0)
+        adjustments_layout.addWidget(pitch_slider, 1, 1)
 
-        pitch_label = QLabel(f"Pitch scale {pitch_slider.value()}Hz")
-
-        pitch_slider.valueChanged.connect(
-            update_slider(pitch_slider, pitch_label, "pitch_slider_value", "Pitch scale", "Hz")
-        )
-
-        self.grid_layout.addWidget(pitch_label, slider_base_row + 1, 0, 1, 2)
-        self.grid_layout.addWidget(pitch_slider, slider_base_row + 1, 3, 1, 2)
-
+        # Speed slider
+        speed_label = QLabel(f"Speed {config.get('speed_slider_value', 0)}%")
         speed_slider = QSlider(qt.Qt.Orientation.Horizontal)
         speed_slider.setMinimum(-50)
         speed_slider.setMaximum(50)
         speed_slider.setValue(config.get("speed_slider_value") or 0)
+        speed_slider.setToolTip("Adjust the speaking rate (-50% to +50%)")
         self.speed_slider = speed_slider
+        speed_slider.valueChanged.connect(update_slider(speed_slider, speed_label, "speed_slider_value", "Speed", "%"))
+        adjustments_layout.addWidget(speed_label, 2, 0)
+        adjustments_layout.addWidget(speed_slider, 2, 1)
 
-        speed_label = QLabel(f"Speed scale {speed_slider.value()}%")
+        adjustments_group.setLayout(adjustments_layout)
+        main_layout.addWidget(adjustments_group)
 
-        speed_slider.valueChanged.connect(
-            update_slider(speed_slider, speed_label, "speed_slider_value", "Rate scale", "%")
-        )
+        # ===== SECTION 5: Action Buttons =====
+        button_layout = qt.QHBoxLayout()
 
-        self.grid_layout.addWidget(speed_label, slider_base_row + 2, 0, 1, 2)
-        self.grid_layout.addWidget(speed_slider, slider_base_row + 2, 3, 1, 2)
+        self.cancel_button = qt.QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.reject)
 
-        layout.addLayout(self.grid_layout)
+        self.generate_button = qt.QPushButton("Generate Audio")
+        self.generate_button.clicked.connect(self.pre_accept)
+        # Make generate button more prominent
+        self.generate_button.setDefault(True)
 
-        self.setLayout(layout)
+        if self.speaker_combo.count() == 0:
+            self.preview_voice_button.setEnabled(False)
+            self.preview_voice_button.setToolTip("Add speakers in the add-on config to preview a voice.")
+            self.generate_button.setEnabled(False)
+            self.generate_button.setToolTip("Add speakers in the add-on config to generate audio.")
+
+        button_layout.addStretch()
+        button_layout.addWidget(self.cancel_button)
+        button_layout.addWidget(self.generate_button)
+
+        main_layout.addLayout(button_layout)
+
+        self.setLayout(main_layout)
+
+        # Store reference to grid_layout for backward compatibility with tests
+        self.grid_layout = None
 
     def _reset_preview_cache(self):
         self._preview_cache = None
@@ -733,7 +754,7 @@ def onEdgeTTSOptionSelected(browser):
         )
         return
 
-    dialog = MyDialog(browser)
+    dialog = AudioGenDialog(browser)
     if dialog.exec():
         speaker = getSpeaker(dialog.speaker_combo)
         if speaker is None:
