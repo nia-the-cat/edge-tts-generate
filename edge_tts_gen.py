@@ -573,7 +573,9 @@ class MyDialog(qt.QDialog):
             except Exception as exc:
                 error_msg = str(exc)
                 mw.taskman.run_on_main(
-                    lambda: QMessageBox.critical(self, "Preview Error", f"Failed to generate preview: {error_msg}")
+                    lambda: QMessageBox.critical(
+                        self, "Preview Error", f"Failed to generate preview:\n{error_msg}"
+                    )
                 )
 
         # Run preview generation in background thread
@@ -642,13 +644,29 @@ def GenerateAudioBatch(text_speaker_items, config):
         raise Exception(f"Failed to parse audio generation result: {exc}") from exc
 
     audio_map = {}
+    item_errors: list[str] = []
+
     for item in decoded_results:
-        identifier = str(item.get("id", ""))
-        audio_b64 = item.get("audio", "")
+        identifier = str(item.get("id", "")) or "<unknown>"
+        if "error" in item:
+            error_reason = item.get("error") or "Unknown error"
+            item_errors.append(f"{identifier}: {error_reason}")
+            continue
+
+        audio_b64 = item.get("audio")
+        if not audio_b64:
+            item_errors.append(f"{identifier}: Missing audio data in response")
+            continue
+
         try:
             audio_map[identifier] = base64.b64decode(audio_b64)
         except Exception as exc:
             raise Exception(f"Failed to decode audio data for item {identifier}: {exc}") from exc
+
+    if item_errors:
+        error_summary = "\n".join(f"- {error}" for error in item_errors)
+        raise Exception(f"Audio generation failed for the following items:\n{error_summary}")
+
     return audio_map
 
 
@@ -778,7 +796,7 @@ def onEdgeTTSOptionSelected(browser):
                 QMessageBox.critical(
                     mw,
                     "Edge TTS Generation Failed",
-                    f"An error occurred while generating audio: {exc}",
+                    f"An error occurred while generating audio:\n{exc}",
                 )
                 return
 
