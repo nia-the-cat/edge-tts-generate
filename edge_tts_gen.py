@@ -46,6 +46,7 @@ WHITESPACE_RE = re.compile(" ")
 
 # Session state for confirmation dialogs
 # Resets when Anki restarts - provides convenience for batch operations while maintaining safety
+@dataclass
 class _SessionState:
     skip_overwrite_confirmation: bool = False
 
@@ -470,8 +471,10 @@ class AudioGenDialog(qt.QDialog):
             )
         else:
             # Show confirmation dialog for overwrite mode (destructive action)
-            # Skip dialog if user has chosen to suppress it for this session
-            if self.overwrite_radio.isChecked() and not _session_state.skip_overwrite_confirmation:
+            is_overwrite_mode = self.overwrite_radio.isChecked()
+            should_show_confirmation = is_overwrite_mode and not _session_state.skip_overwrite_confirmation
+
+            if should_show_confirmation:
                 msg_box = QMessageBox(self)
                 msg_box.setIcon(QMessageBox.Icon.Warning)
                 msg_box.setWindowTitle("Confirm Overwrite")
