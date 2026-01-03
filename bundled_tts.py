@@ -114,8 +114,7 @@ async def _synthesize_batch_async(items: list[TTSItem], config: TTSConfig) -> li
 
     tasks = [synthesize_with_limit(item) for item in items]
     # asyncio.gather preserves the order of tasks, so results match input order
-    results = await asyncio.gather(*tasks)
-    return list(results)
+    return await asyncio.gather(*tasks)
 
 
 def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:

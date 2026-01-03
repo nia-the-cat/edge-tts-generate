@@ -101,28 +101,21 @@ class TestBatchResultOrdering:
     def test_results_maintain_input_order_with_numeric_identifiers(self):
         """Results should match input order even with numeric-like identifiers.
 
-        This ensures identifiers like ["1", "10", "2"] stay in that order,
-        not sorted lexicographically to ["1", "10", "2"] (which matches)
-        or numerically to ["1", "2", "10"].
+        This ensures that input order is preserved, not reordered by sorting.
+        For example: ["9", "1", "10"] stays as ["9", "1", "10"], not sorted to ["1", "10", "9"].
         """
         bundled_tts = _load_bundled_tts()
 
-        # Create items with identifiers that would sort differently
-        # Lexicographic: ["1", "10", "2"] (1 < 10 < 2 lexicographically because "10" < "2")
-        # Actually lexicographic is: ["1", "10", "2"] stays same since "1" < "1" then "0" < ""
-        # Let me use better example: ["1", "10", "9"] -> sorted: ["1", "10", "9"] stays same
-        # Actually lexicographic: "10" < "9" because "1" < "9"
-        # So ["9", "1", "10"] sorted lexicographically = ["1", "10", "9"]
-
-        # The key is: if we pass ["9", "1", "10"], without sorting we get ["9", "1", "10"]
-        # With lexicographic sort we'd get ["1", "10", "9"]
+        # Create items with identifiers that would be reordered if sorted lexicographically
+        # Input order: ["9", "1", "10"]
+        # Lexicographic sort would produce: ["1", "10", "9"] (since "10" < "9")
         items = [
             bundled_tts.TTSItem(identifier="9", text="Nine"),
             bundled_tts.TTSItem(identifier="1", text="One"),
             bundled_tts.TTSItem(identifier="10", text="Ten"),
         ]
 
-        # Verify the order we expect after no sorting (preserving input order)
+        # Verify input order is preserved
         expected_order = ["9", "1", "10"]
 
         # What we'd get with lexicographic sorting (which we removed)
