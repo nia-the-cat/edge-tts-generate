@@ -331,6 +331,42 @@ class TestSynthesizeFunction:
         finally:
             os.unlink(batch_file)
 
+    def test_synthesize_batch_reports_item_errors(self):
+        """Batch synthesis should report which identifiers failed."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(
+                {"items": [{"id": "1", "text": "Good"}, {"id": "2", "text": "Bad"}]},
+                f,
+            )
+            batch_file = f.name
+
+        try:
+            args = argparse.Namespace(
+                batch_file=batch_file,
+                voice="en-US-JennyNeural",
+                pitch="+0Hz",
+                rate="+0%",
+                volume="+0%",
+            )
+
+            external_tts_runner = _load_external_tts_runner()
+
+            async def fake_synthesize_text(text, _args):
+                if text == "Bad":
+                    raise RuntimeError("edge-tts failed")
+                return f"audio-{text}".encode()
+
+            with patch.object(external_tts_runner, "synthesize_text", side_effect=fake_synthesize_text):
+                result = asyncio.run(external_tts_runner.synthesize_batch(args))
+
+            expected = [
+                {"id": "1", "audio": base64.b64encode(b"audio-Good").decode("ascii")},
+                {"id": "2", "error": "edge-tts failed"},
+            ]
+            assert result == expected
+        finally:
+            os.unlink(batch_file)
+
 
 class TestMainFunction:
     """Test the main entry point function."""
