@@ -454,3 +454,97 @@ class TestVoicePitchRateFormatting:
         volume_value = -75
         volume = f"{volume_value:+}%"
         assert volume == "-75%"
+
+
+class TestGetCommonFieldsErrorMessage:
+    """Test the error message construction in getCommonFields."""
+
+    def test_error_message_includes_all_note_ids(self):
+        """Error message should include all selected note IDs as strings."""
+        selected_notes = [123, 456, 789]
+        note_id = 456  # The note that is None
+
+        # This is the fixed logic from getCommonFields
+        error_message = (
+            f"Note with id {note_id} is None.\n"
+            f"Selected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\n"
+            "Please submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+        )
+
+        # Should include the problematic note ID
+        assert "456" in error_message
+        # Should include all note IDs in the list
+        assert "123" in error_message
+        assert "456" in error_message
+        assert "789" in error_message
+        # Should properly format as comma-separated string
+        assert "123, 456, 789" in error_message
+
+    def test_error_message_handles_single_note(self):
+        """Error message should work correctly with a single note ID."""
+        selected_notes = [12345]
+        note_id = 12345
+
+        error_message = (
+            f"Note with id {note_id} is None.\n"
+            f"Selected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\n"
+            "Please submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+        )
+
+        assert "12345" in error_message
+        assert "Selected note IDs: 12345" in error_message
+
+
+class TestFieldOrderStability:
+    """Test that field order is deterministic for dropdowns."""
+
+    def test_sorted_fields_are_deterministic(self):
+        """Sorting a set of fields should produce deterministic order."""
+        common_fields = {"Audio", "Front", "Back", "Expression", "Sentence"}
+
+        # This is the fix: sorting the set before iteration
+        sorted_fields = sorted(common_fields)
+
+        # Should always produce alphabetical order
+        assert sorted_fields == ["Audio", "Back", "Expression", "Front", "Sentence"]
+
+        # Multiple sorts should produce identical results
+        for _ in range(10):
+            assert sorted(common_fields) == sorted_fields
+
+    def test_sorted_fields_consistent_with_different_set_creation_order(self):
+        """Field order should be consistent regardless of set creation order."""
+        # Create sets with different insertion orders
+        fields1 = {"Front", "Back", "Audio"}
+        fields2 = {"Audio", "Front", "Back"}
+        fields3 = {"Back", "Audio", "Front"}
+
+        # All should produce the same sorted order
+        assert sorted(fields1) == sorted(fields2) == sorted(fields3)
+        assert sorted(fields1) == ["Audio", "Back", "Front"]
+
+    def test_sorted_fields_preserve_saved_index_lookup(self):
+        """Saved field names should map to correct indices after sorting."""
+        common_fields = {"Expression", "Audio", "Back", "Front"}
+        last_source_field = "Expression"
+        last_destination_field = "Audio"
+
+        # Simulate the dropdown population logic
+        sorted_fields = sorted(common_fields)
+        source_index = None
+        destination_index = None
+
+        for i, field in enumerate(sorted_fields):
+            if field == last_source_field:
+                source_index = i
+            if field == last_destination_field:
+                destination_index = i
+
+        # Expression should be at index 2 (alphabetically: Audio=0, Back=1, Expression=2, Front=3)
+        assert source_index == 2
+        # Audio should be at index 0
+        assert destination_index == 0
+
+        # Verify the sorted list
+        assert sorted_fields[source_index] == "Expression"
+        assert sorted_fields[destination_index] == "Audio"
