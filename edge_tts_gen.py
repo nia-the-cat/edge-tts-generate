@@ -586,9 +586,7 @@ class MyDialog(qt.QDialog):
             except Exception as exc:
                 error_msg = str(exc)
                 mw.taskman.run_on_main(
-                    lambda: QMessageBox.critical(
-                        self, "Preview Error", f"Failed to generate preview:\n{error_msg}"
-                    )
+                    lambda: QMessageBox.critical(self, "Preview Error", f"Failed to generate preview:\n{error_msg}")
                 )
 
         # Run preview generation in background thread
@@ -609,10 +607,7 @@ def GenerateAudioBatch(text_speaker_items, config):
         ) from exc
 
     payload = {
-        "items": [
-            {"id": identifier, "text": text, "voice": voice}
-            for identifier, text, voice in text_speaker_items
-        ]
+        "items": [{"id": identifier, "text": text, "voice": voice} for identifier, text, voice in text_speaker_items]
     }
 
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as handle:
@@ -679,17 +674,13 @@ def GenerateAudioBatch(text_speaker_items, config):
 
         audio_b64 = item.get("audio")
         if not audio_b64:
-            item_errors.append(
-                ItemError(identifier=identifier, reason="Missing audio data in response")
-            )
+            item_errors.append(ItemError(identifier=identifier, reason="Missing audio data in response"))
             continue
 
         try:
             audio_map[identifier] = base64.b64decode(audio_b64)
         except Exception as exc:
-            item_errors.append(
-                ItemError(identifier=identifier, reason=f"Failed to decode audio: {exc}")
-            )
+            item_errors.append(ItemError(identifier=identifier, reason=f"Failed to decode audio: {exc}"))
 
     return BatchAudioResult(audio_map=audio_map, item_errors=item_errors)
 
@@ -822,7 +813,7 @@ def onEdgeTTSOptionSelected(browser):
         def on_done(future):
             try:
                 future.result()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 mw.progress.finish()
                 mw.reset()
                 QMessageBox.critical(

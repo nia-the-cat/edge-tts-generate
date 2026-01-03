@@ -6,15 +6,15 @@ import sys
 
 import edge_tts
 
+
 BATCH_CONCURRENCY_LIMIT = 5
 STREAM_TIMEOUT_SECONDS_DEFAULT = 30.0
 STREAM_TIMEOUT_RETRIES_DEFAULT = 1
 
+
 async def synthesize_text(text: str, args: argparse.Namespace) -> bytes:
     timeout_seconds = getattr(args, "stream_timeout", STREAM_TIMEOUT_SECONDS_DEFAULT)
-    max_retries = getattr(
-        args, "stream_timeout_retries", STREAM_TIMEOUT_RETRIES_DEFAULT
-    )
+    max_retries = getattr(args, "stream_timeout_retries", STREAM_TIMEOUT_RETRIES_DEFAULT)
 
     async def _collect_audio() -> bytes:
         tts = edge_tts.Communicate(
@@ -34,11 +34,9 @@ async def synthesize_text(text: str, args: argparse.Namespace) -> bytes:
     for attempt in range(max_retries + 1):
         try:
             return await asyncio.wait_for(_collect_audio(), timeout=timeout_seconds)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             if attempt == max_retries:
-                raise RuntimeError(
-                    f"Timed out after {timeout_seconds} seconds while streaming audio"
-                ) from exc
+                raise RuntimeError(f"Timed out after {timeout_seconds} seconds while streaming audio") from exc
 
 
 async def synthesize(args: argparse.Namespace) -> bytes:
@@ -72,13 +70,9 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
         text = item.get("text", "")
         identifier = str(item.get("id", ""))
         voice = item.get("voice")
-        queued_items.append(
-            (identifier, asyncio.create_task(synthesize_with_limit(text, voice)))
-        )
+        queued_items.append((identifier, asyncio.create_task(synthesize_with_limit(text, voice))))
 
-    audio_results = await asyncio.gather(
-        *(task for _, task in queued_items), return_exceptions=True
-    )
+    audio_results = await asyncio.gather(*(task for _, task in queued_items), return_exceptions=True)
 
     paired_results = sorted(
         zip((identifier for identifier, _ in queued_items), audio_results, strict=True),
@@ -91,9 +85,7 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
         if isinstance(result, Exception):
             results.append({"id": identifier, "error": str(result)})
         else:
-            results.append(
-                {"id": identifier, "audio": base64.b64encode(result).decode("ascii")}
-            )
+            results.append({"id": identifier, "audio": base64.b64encode(result).decode("ascii")})
 
     return results
 

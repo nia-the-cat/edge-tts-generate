@@ -1,12 +1,10 @@
 """Tests for GenerateAudioBatch error handling."""
 
+import importlib.util
 import json
 import os
-import importlib.util
 import sys
 from types import SimpleNamespace
-
-import pytest
 
 
 _MODULE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "edge_tts_gen.py")
@@ -33,10 +31,12 @@ def test_generate_audio_batch_reports_item_errors(monkeypatch):
 
     monkeypatch.setattr(edge_tts_gen, "get_external_python", lambda _addon_dir: "python")
 
-    batch_response = json.dumps([
-        {"id": "note-123", "error": "Service unavailable"},
-        {"id": "note-456", "audio": ""},
-    ])
+    batch_response = json.dumps(
+        [
+            {"id": "note-123", "error": "Service unavailable"},
+            {"id": "note-456", "audio": ""},
+        ]
+    )
 
     mock_completed = SimpleNamespace(stdout=batch_response, stderr="", returncode=0)
 
