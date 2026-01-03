@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import re
 import subprocess
@@ -21,7 +22,19 @@ from aqt.qt import (
 from aqt.sound import av_player
 from aqt.utils import tooltip
 
-from .external_runtime import get_external_python
+
+try:
+    from .external_runtime import get_external_python
+    from .logging_config import get_logger
+except ImportError:
+    # Fallback for test environments where relative imports don't work
+    from external_runtime import get_external_python
+
+    def get_logger(name: str) -> logging.Logger:
+        return logging.getLogger(f"edge_tts_generate.{name.lstrip('.')}")
+
+
+logger = get_logger(__name__)
 
 
 CREATE_NEW_FIELD_OPTION = "[ + Create new field... ]"
@@ -595,13 +608,17 @@ class MyDialog(qt.QDialog):
 
 def GenerateAudioBatch(text_speaker_items, config):
     if not text_speaker_items:
+        logger.debug("GenerateAudioBatch called with empty items list")
         return BatchAudioResult(audio_map={}, item_errors=[])
 
+    logger.info("Starting batch audio generation for %d items", len(text_speaker_items))
     addon_dir = dirname(__file__)
 
     try:
         python_exe = get_external_python(addon_dir)
+        logger.debug("Using external Python: %s", python_exe)
     except Exception as exc:
+        logger.error("Failed to bootstrap external Python runtime: %s", exc)
         raise Exception(
             "Failed to bootstrap external Python runtime. Check your internet connection and restart Anki."
         ) from exc
@@ -621,6 +638,8 @@ def GenerateAudioBatch(text_speaker_items, config):
     stream_timeout_retries = config.get("stream_timeout_retries", 1)
     # All items share the same voice; take the first entry
     voice = text_speaker_items[0][2]
+
+    logger.debug("Audio parameters: voice=%s, pitch=%s, rate=%s, volume=%s", voice, pitch, rate, volume)
 
     runner_path = join(addon_dir, "external_tts_runner.py")
     command = [
@@ -643,6 +662,7 @@ def GenerateAudioBatch(text_speaker_items, config):
     ]
 
     try:
+        logger.debug("Executing external TTS runner")
         result = subprocess.run(
             command,
             check=True,
@@ -650,8 +670,10 @@ def GenerateAudioBatch(text_speaker_items, config):
             text=True,
             **_get_subprocess_flags(),
         )
+        logger.debug("External TTS runner completed successfully")
     except subprocess.CalledProcessError as exc:
         error_output = exc.stderr
+        logger.error("External runner failed with exit code %d: %s", exc.returncode, error_output)
         raise Exception(f"Unable to generate audio. External runner failed with: {error_output}") from exc
     finally:
         if exists(batch_path):
@@ -660,6 +682,7 @@ def GenerateAudioBatch(text_speaker_items, config):
     try:
         decoded_results = json.loads(result.stdout or "[]")
     except json.JSONDecodeError as exc:
+        logger.error("Failed to parse JSON response from external runner: %s", exc)
         raise Exception(f"Failed to parse audio generation result: {exc}") from exc
 
     audio_map: dict[str, bytes] = {}
@@ -669,19 +692,27 @@ def GenerateAudioBatch(text_speaker_items, config):
         identifier = str(item.get("id", "")) or "<unknown>"
         if "error" in item:
             error_reason = item.get("error") or "Unknown error"
+            logger.warning("Audio generation error for item %s: %s", identifier, error_reason)
             item_errors.append(ItemError(identifier=identifier, reason=error_reason))
             continue
 
         audio_b64 = item.get("audio")
         if not audio_b64:
+            logger.warning("Missing audio data for item %s", identifier)
             item_errors.append(ItemError(identifier=identifier, reason="Missing audio data in response"))
             continue
 
         try:
             audio_map[identifier] = base64.b64decode(audio_b64)
         except Exception as exc:
+            logger.warning("Failed to decode audio for item %s: %s", identifier, exc)
             item_errors.append(ItemError(identifier=identifier, reason=f"Failed to decode audio: {exc}"))
 
+    logger.info(
+        "Batch audio generation complete: %d successful, %d errors",
+        len(audio_map),
+        len(item_errors),
+    )
     return BatchAudioResult(audio_map=audio_map, item_errors=item_errors)
 
 
@@ -721,8 +752,10 @@ def addFieldToNoteTypes(field_name, selected_notes):
 
 def onEdgeTTSOptionSelected(browser):
     selected_notes = browser.selectedNotes()
+    logger.debug("Edge TTS option selected with %d notes", len(selected_notes))
 
     if len(selected_notes) == 0:
+        logger.debug("No notes selected, showing information dialog")
         QMessageBox.information(
             mw,
             "No notes selected",
@@ -734,6 +767,7 @@ def onEdgeTTSOptionSelected(browser):
     if dialog.exec():
         speaker = getSpeaker(dialog.speaker_combo)
         if speaker is None:
+            logger.error("getSpeaker returned None in onEdgeTTSOptionSelected")
             raise Exception("getSpeaker returned None in my_action")
 
         source_field = dialog.source_combo.itemText(dialog.source_combo.currentIndex())
@@ -947,4 +981,4 @@ def onEdgeTTSOptionSelected(browser):
                 )
 
     else:
-        print("Canceled!")
+        logger.debug("Audio generation dialog canceled by user")

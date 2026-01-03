@@ -22,7 +22,7 @@ This is a text-to-speech add-on for Anki that uses Microsoft Edge's TTS (edge-tt
 
 # Requirements
 
-- Anki (versions with point version 35-231000)
+- Anki version 2.1.35 or later (up to 23.10)
 - Internet connection (for first-time setup and TTS generation)
 - **Platform**: Currently the automatic Python runtime download only supports Windows (amd64). macOS and Linux users would need manual setup.
 
@@ -176,6 +176,31 @@ The add-on also supports these configuration options in `meta.json`:
 |--------|---------|-------------|
 | `stream_timeout_seconds` | 30.0 | Timeout for TTS streaming (seconds) |
 | `stream_timeout_retries` | 1 | Number of retries on timeout |
+| `log_level` | WARNING | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
+
+### Logging and Bug Reports
+
+The add-on includes a logging system to help with debugging and bug reports. Logs are written to `edge_tts.log` in the add-on directory.
+
+**Viewing Logs:**
+1. Navigate to your Anki add-ons folder
+2. Find the `edge_tts.log` file in the Edge TTS add-on directory
+3. Open with any text editor
+
+**Adjusting Log Level:**
+1. Go to `Tools` → `Add-ons` → Select "EdgeTTS Audio Generator" → `Config`
+2. Add or modify `"log_level": "DEBUG"` for verbose logging
+3. Restart Anki for changes to take effect
+
+Available log levels (from most to least verbose):
+- `DEBUG` - Detailed information for diagnosing issues
+- `INFO` - General operational information
+- `WARNING` - Potential issues (default)
+- `ERROR` - Errors that prevented an operation
+- `CRITICAL` - Serious errors
+
+**For Bug Reports:**
+When reporting issues, please include the contents of `edge_tts.log` with `log_level` set to `DEBUG`.
 
 ## Contributing
 

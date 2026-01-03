@@ -20,5 +20,6 @@
     "pt-BR-AntonioNeural",
     "zh-CN-XiaoxiaoNeural",
     "zh-CN-YunxiNeural"
-  ]
+  ],
+  "log_level": "WARNING"
 }

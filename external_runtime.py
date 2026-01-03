@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import subprocess
 import sys
@@ -17,6 +18,9 @@ EXPECTED_HASHES = {
     GET_PIP_URL: "1c3f1ab6f6b0c8ad4e4f4148e90fd89a3248dbe4a564c39b2971f91e78f7a9b9",
 }
 
+# Use a module-level logger
+logger = logging.getLogger("edge_tts_generate.external_runtime")
+
 
 def _get_subprocess_flags():
     """Get subprocess creation flags to hide console windows on Windows."""
@@ -31,6 +35,7 @@ def _get_subprocess_flags():
 def _download(
     url: str, destination: str, *, expected_hash: str | None = None, retries: int = 3, timeout: int = 30
 ) -> None:
+    logger.info("Downloading %s", url)
     for attempt in range(1, retries + 1):
         try:
             if os.path.exists(destination):
@@ -43,14 +48,18 @@ def _download(
             actual_hash = digest.hexdigest()
             if expected_hash is not None and actual_hash != expected_hash:
                 os.remove(destination)
+                logger.error("Hash mismatch: expected %s, got %s", expected_hash, actual_hash)
                 raise ValueError(
                     "Downloaded file hash did not match expected value. "
                     f"Expected {expected_hash} but got {actual_hash}. "
                     "The download may be corrupted or tampered with."
                 )
+            logger.debug("Download complete: %s", destination)
             return
         except Exception as exc:
+            logger.warning("Download attempt %d/%d failed: %s", attempt, retries, exc)
             if attempt == retries:
+                logger.error("Failed to download %s after %d attempts", url, retries)
                 raise RuntimeError(f"Failed to download {url} after {retries} attempts") from exc
             # Remove partially downloaded files before retrying to avoid caching corrupt data
             if os.path.exists(destination):
@@ -103,18 +112,23 @@ def _python_can_import(python_exe: str, module: str) -> bool:
 
 @lru_cache(maxsize=1)
 def get_external_python(addon_dir: str) -> str:
+    logger.info("Initializing external Python runtime")
     runtime_dir = os.path.join(addon_dir, "runtime")
     python_dir = os.path.join(runtime_dir, f"python-{PYTHON_VERSION}")
     python_exe = os.path.join(python_dir, "python.exe")
     os.makedirs(runtime_dir, exist_ok=True)
 
     if not os.path.exists(python_exe):
+        logger.info("Python executable not found, downloading Python %s", PYTHON_VERSION)
         archive_path = os.path.join(runtime_dir, "python-embed.zip")
         _download(EMBED_URL, archive_path, expected_hash=EXPECTED_HASHES[EMBED_URL])
+        logger.debug("Extracting Python to %s", python_dir)
         _extract_zip(archive_path, python_dir)
         _ensure_import_site(python_dir)
+        logger.info("Python %s installed successfully", PYTHON_VERSION)
 
     if not _python_can_import(python_exe, "pip"):
+        logger.info("Installing pip")
         _ensure_get_pip(python_exe, runtime_dir)
         subprocess.run(
             [python_exe, "-m", "pip", "install", "--upgrade", "pip"],
@@ -122,13 +136,17 @@ def get_external_python(addon_dir: str) -> str:
             capture_output=True,
             **_get_subprocess_flags(),
         )
+        logger.debug("pip installed and upgraded")
 
     if not _python_can_import(python_exe, "edge_tts"):
+        logger.info("Installing edge-tts library: %s", EDGE_TTS_SPEC)
         subprocess.run(
             [python_exe, "-m", "pip", "install", EDGE_TTS_SPEC],
             check=True,
             capture_output=True,
             **_get_subprocess_flags(),
         )
+        logger.info("edge-tts library installed successfully")
 
+    logger.debug("External Python runtime ready: %s", python_exe)
     return python_exe
