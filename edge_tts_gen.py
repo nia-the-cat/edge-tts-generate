@@ -795,6 +795,8 @@ def onEdgeTTSOptionSelected(browser):
             missing_text_skips = 0
             pending_items = []
             pending_note_ids = []
+            chunk_size = 10
+            config = mw.addonManager.getConfig(__name__)
 
             for note_id in notes:
                 note = mw.col.get_note(note_id)
@@ -820,41 +822,53 @@ def onEdgeTTSOptionSelected(browser):
             if not pending_items:
                 return
 
-            audio_map = GenerateAudioBatch(pending_items, mw.addonManager.getConfig(__name__))
-
-            for note_id in pending_note_ids:
-                notes_so_far += 1
-                audio_data = audio_map.get(str(note_id))
-                if audio_data is None:
-                    raise Exception(f"No audio returned for note {note_id}. Please try again.")
-
-                media_dir = mw.col.media.dir()
-
-                file_id = str(uuid.uuid4())
-                audio_extension = "mp3"
-                filename = f"edge_tts_{file_id}.{audio_extension}"
-                audio_full_path = join(media_dir, filename)
-
-                with open(audio_full_path, "wb") as f:
-                    f.write(audio_data)
-
-                audio_field_text = f"[sound:{filename}]"
-                note = mw.col.get_note(note_id)
-
-                # Re-read current content from fresh note to avoid stale data issues
-                current_content = getFieldContent(note, destination_field)
-
-                # Handle audio placement based on mode
-                if audio_handling_mode == "append" and current_content:
-                    # Append: keep existing content and add new audio
-                    note[destination_field] = current_content + " " + audio_field_text
-                else:
-                    # Overwrite: replace content entirely (also used for empty fields)
-                    note[destination_field] = audio_field_text
-
-                mw.col.update_note(note)
-                updateProgress(notes_so_far, total_notes, skipped_count)
+            canceled = False
+            for chunk_start in range(0, len(pending_items), chunk_size):
                 if mw.progress.want_cancel():
+                    break
+
+                chunk_items = pending_items[chunk_start : chunk_start + chunk_size]
+                chunk_note_ids = pending_note_ids[chunk_start : chunk_start + chunk_size]
+
+                audio_map = GenerateAudioBatch(chunk_items, config)
+
+                for note_id in chunk_note_ids:
+                    notes_so_far += 1
+                    audio_data = audio_map.get(str(note_id))
+                    if audio_data is None:
+                        raise Exception(f"No audio returned for note {note_id}. Please try again.")
+
+                    media_dir = mw.col.media.dir()
+
+                    file_id = str(uuid.uuid4())
+                    audio_extension = "mp3"
+                    filename = f"edge_tts_{file_id}.{audio_extension}"
+                    audio_full_path = join(media_dir, filename)
+
+                    with open(audio_full_path, "wb") as f:
+                        f.write(audio_data)
+
+                    audio_field_text = f"[sound:{filename}]"
+                    note = mw.col.get_note(note_id)
+
+                    # Re-read current content from fresh note to avoid stale data issues
+                    current_content = getFieldContent(note, destination_field)
+
+                    # Handle audio placement based on mode
+                    if audio_handling_mode == "append" and current_content:
+                        # Append: keep existing content and add new audio
+                        note[destination_field] = current_content + " " + audio_field_text
+                    else:
+                        # Overwrite: replace content entirely (also used for empty fields)
+                        note[destination_field] = audio_field_text
+
+                    mw.col.update_note(note)
+                    updateProgress(notes_so_far, total_notes, skipped_count)
+                    if mw.progress.want_cancel():
+                        canceled = True
+                        break
+
+                if canceled or mw.progress.want_cancel():
                     break
 
             if missing_text_skips > 0:
