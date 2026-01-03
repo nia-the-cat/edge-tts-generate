@@ -468,7 +468,8 @@ class TestGetCommonFieldsErrorMessage:
         error_message = (
             f"Note with id {note_id} is None.\n"
             f"Selected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\n"
-            "Please submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+            "Please submit an issue with more information about what cards caused this at "
+            "https://github.com/nia-the-cat/edge-tts-generate/issues/new"
         )
 
         # Should include the problematic note ID
@@ -488,7 +489,8 @@ class TestGetCommonFieldsErrorMessage:
         error_message = (
             f"Note with id {note_id} is None.\n"
             f"Selected note IDs: {', '.join(str(nid) for nid in selected_notes)}.\n"
-            "Please submit an issue at https://github.com/nia-the-cat/edge-tts-generate/issues/new"
+            "Please submit an issue with more information about what cards caused this at "
+            "https://github.com/nia-the-cat/edge-tts-generate/issues/new"
         )
 
         assert "12345" in error_message
