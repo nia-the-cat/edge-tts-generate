@@ -40,14 +40,23 @@ async def synthesize_batch(args: argparse.Namespace) -> list[dict[str, str]]:
 
     semaphore = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
 
-    async def synthesize_with_limit(text: str) -> bytes:
+    async def synthesize_with_limit(text: str, voice: str | None) -> bytes:
         async with semaphore:
-            return await synthesize_text(text, args)
+            item_args = argparse.Namespace(
+                voice=voice or args.voice,
+                pitch=args.pitch,
+                rate=args.rate,
+                volume=args.volume,
+            )
+            return await synthesize_text(text, item_args)
 
     for item in items:
         text = item.get("text", "")
         identifier = str(item.get("id", ""))
-        queued_items.append((identifier, asyncio.create_task(synthesize_with_limit(text))))
+        voice = item.get("voice")
+        queued_items.append(
+            (identifier, asyncio.create_task(synthesize_with_limit(text, voice)))
+        )
 
     audio_results = await asyncio.gather(
         *(task for _, task in queued_items), return_exceptions=True
