@@ -200,3 +200,67 @@ class TestConfigureLogging:
         logging_config = load_logging_config()
         # This should not raise an error
         logging_config.configure_logging(backup_count=5)
+
+
+class TestLoggingReconfiguration:
+    """Test that logging can be reconfigured after initial setup."""
+
+    def test_reconfigure_updates_log_level(self):
+        """Subsequent configure_logging calls should update log level."""
+        logging_config = load_logging_config()
+
+        # Initial configuration
+        logging_config.configure_logging(log_level="ERROR")
+        root_logger = logging.getLogger("edge_tts_generate")
+        assert root_logger.level == logging.ERROR
+
+        # Reconfigure with different level
+        logging_config.configure_logging(log_level="DEBUG")
+        assert root_logger.level == logging.DEBUG
+
+    def test_reconfigure_updates_handler_level(self):
+        """Subsequent configure_logging calls should update handler level."""
+        logging_config = load_logging_config()
+
+        # Initial configuration
+        logging_config.configure_logging(log_level="ERROR")
+        root_logger = logging.getLogger("edge_tts_generate")
+
+        # The handler should exist now
+        if root_logger.handlers:
+            handler = root_logger.handlers[0]
+            assert handler.level == logging.ERROR
+
+            # Reconfigure with different level
+            logging_config.configure_logging(log_level="DEBUG")
+            assert handler.level == logging.DEBUG
+
+    def test_reconfigure_when_handler_configured_flag_is_true(self):
+        """Should allow reconfiguration even when _state.handler_configured is True."""
+        logging_config = load_logging_config()
+
+        # First configure
+        logging_config.configure_logging(log_level="WARNING")
+        assert logging_config._state.handler_configured is True
+
+        # The flag being True should not prevent level updates
+        logging_config.configure_logging(log_level="INFO")
+        root_logger = logging.getLogger("edge_tts_generate")
+        assert root_logger.level == logging.INFO
+
+    def test_reconfigure_preserves_handlers(self):
+        """Reconfiguration should not add duplicate handlers."""
+        logging_config = load_logging_config()
+
+        # Initial configuration
+        logging_config.configure_logging(log_level="WARNING")
+        root_logger = logging.getLogger("edge_tts_generate")
+        initial_handler_count = len(root_logger.handlers)
+
+        # Reconfigure multiple times
+        logging_config.configure_logging(log_level="DEBUG")
+        logging_config.configure_logging(log_level="INFO")
+        logging_config.configure_logging(log_level="ERROR")
+
+        # Should not have added more handlers
+        assert len(root_logger.handlers) == initial_handler_count
