@@ -82,6 +82,7 @@ Choose how to handle existing content in the destination field:
   
 * **Overwrite** ⚠️ - Replaces all content in the destination field with new audio
   - Use when you want to regenerate audio completely
+  - **Confirmation required**: A dialog will ask you to confirm before proceeding
   - Warning: Erases existing content
   
 * **Skip** ⏭️ - Ignores notes that already have content in the destination field
@@ -116,6 +117,7 @@ The add-on comes with 20 pre-configured voices across 10 languages:
 * **Pitch Control** - Adjust voice pitch from -50Hz to +50Hz
 * **Speed Control** - Adjust speaking rate from -50% to +50%
 * **Volume Control** - Adjust volume from -100% to +100%
+* **Reset to Defaults** - Click to reset all voice adjustments (pitch, speed, volume) to their default values (0)
 
 ### Generating Audio
 

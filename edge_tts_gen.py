@@ -340,6 +340,25 @@ class AudioGenDialog(qt.QDialog):
         adjustments_layout.addWidget(speed_label, 2, 0)
         adjustments_layout.addWidget(speed_slider, 2, 1)
 
+        # Reset to Defaults button
+        self.reset_button = qt.QPushButton("Reset to Defaults")
+        self.reset_button.setToolTip("Reset volume, pitch, and speed to their default values (0)")
+
+        # Store references to labels for reset functionality
+        self._volume_label = volume_label
+        self._pitch_label = pitch_label
+        self._speed_label = speed_label
+
+        def reset_sliders():
+            """Reset all voice adjustment sliders to default values."""
+            self.volume_slider.setValue(0)
+            self.pitch_slider.setValue(0)
+            self.speed_slider.setValue(0)
+            self._reset_preview_cache()
+
+        self.reset_button.clicked.connect(reset_sliders)
+        adjustments_layout.addWidget(self.reset_button, 3, 0, 1, 2)
+
         adjustments_group.setLayout(adjustments_layout)
         main_layout.addWidget(adjustments_group)
 
@@ -445,6 +464,19 @@ class AudioGenDialog(qt.QDialog):
                 f"The chosen source field '{source_text}' is the same as the destination field '{destination_text}'.\nThis would overwrite the field you're reading from.\n\nTypically you want to read from a field like 'sentence' and output to 'audio', but in this case you're trying to read from 'sentence' and write to 'sentence' which cause your sentence to be overwritten",
             )
         else:
+            # Show confirmation dialog for overwrite mode (destructive action)
+            if self.overwrite_radio.isChecked():
+                reply = QMessageBox.warning(
+                    self,
+                    "Confirm Overwrite",
+                    f"You have selected 'Overwrite' mode. This will replace all existing content in the '{destination_text}' field for {len(self.selected_notes)} note(s).\n\n"
+                    "This action cannot be undone.\n\n"
+                    "Do you want to continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
             self.accept()
 
     def getAudioHandlingMode(self):

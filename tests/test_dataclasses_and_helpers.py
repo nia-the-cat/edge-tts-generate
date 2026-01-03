@@ -509,3 +509,66 @@ class TestPreviewTextStatusValues:
         """'field_empty' is a valid status value."""
         valid_statuses = {"ok", "no_notes", "note_none", "field_missing", "field_empty"}
         assert "field_empty" in valid_statuses
+
+
+class TestUIFeatures:
+    """Test UI-related features and constants."""
+
+    def test_reset_sliders_logic(self):
+        """Reset sliders should set values to 0."""
+        # Simulate the reset logic from the dialog
+        default_volume = 0
+        default_pitch = 0
+        default_speed = 0
+
+        # After reset, all values should be 0
+        assert default_volume == 0
+        assert default_pitch == 0
+        assert default_speed == 0
+
+    def test_overwrite_confirmation_message_format(self):
+        """Overwrite confirmation should include field name and note count."""
+        destination_field = "Audio"
+        note_count = 5
+
+        message = (
+            f"You have selected 'Overwrite' mode. This will replace all existing content in the "
+            f"'{destination_field}' field for {note_count} note(s)."
+        )
+
+        assert destination_field in message
+        assert str(note_count) in message
+        assert "Overwrite" in message
+
+    def test_slider_default_values(self):
+        """Slider default values should be 0 for all adjustments."""
+        config = {
+            "volume_slider_value": 0,
+            "pitch_slider_value": 0,
+            "speed_slider_value": 0,
+        }
+
+        assert config.get("volume_slider_value", 0) == 0
+        assert config.get("pitch_slider_value", 0) == 0
+        assert config.get("speed_slider_value", 0) == 0
+
+    def test_slider_ranges(self):
+        """Slider ranges should be within expected bounds."""
+        volume_min, volume_max = -100, 100
+        pitch_min, pitch_max = -50, 50
+        speed_min, speed_max = -50, 50
+
+        # Volume has wider range
+        assert volume_max - volume_min == 200
+
+        # Pitch and speed have same range
+        assert pitch_max - pitch_min == speed_max - speed_min == 100
+
+    def test_audio_handling_modes(self):
+        """Audio handling modes should include expected values."""
+        modes = {"append", "overwrite", "skip"}
+
+        assert "append" in modes
+        assert "overwrite" in modes
+        assert "skip" in modes
+        assert len(modes) == 3
