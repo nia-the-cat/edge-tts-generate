@@ -287,16 +287,17 @@ class TestEventLoopShutdown:
 
         loop = asyncio.new_event_loop()
 
-        # Create a pending task
+        # Create a pending task on the new loop
         async def never_finishes():
             await asyncio.sleep(1000)
 
+        # Create task directly on the loop (no need to set as current event loop)
         task = loop.create_task(never_finishes())
 
-        # Allow task to start
+        # Allow task to start running
         loop.run_until_complete(asyncio.sleep(0))
 
-        # Shutdown should handle the pending task
+        # Shutdown should handle the pending task without errors
         bundled_tts._shutdown_loop(loop)
 
         assert loop.is_closed()

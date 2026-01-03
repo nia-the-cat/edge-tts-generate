@@ -119,6 +119,9 @@ def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:
     This function properly cleans up all pending tasks and transports
     before closing the loop to prevent "Event loop is closed" errors
     on Windows when aiohttp transports are garbage collected.
+
+    Note: This add-on requires Python 3.9+ (enforced by Anki's minimum
+    supported Python version), so shutdown_default_executor() is available.
     """
     try:
         # Cancel all pending tasks
@@ -133,7 +136,7 @@ def _shutdown_loop(loop: asyncio.AbstractEventLoop) -> None:
         # Shut down async generators
         loop.run_until_complete(loop.shutdown_asyncgens())
 
-        # Shut down the default executor (Python 3.9+)
+        # Shut down the default executor (available in Python 3.9+)
         loop.run_until_complete(loop.shutdown_default_executor())
 
     except Exception:
