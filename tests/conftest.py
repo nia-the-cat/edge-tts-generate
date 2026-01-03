@@ -24,6 +24,7 @@ def pytest_configure(config):
         "aqt.browser",
         "aqt.gui_hooks",
         "aqt.sound",
+        "aqt.utils",
     ]
 
     for module_name in mock_modules:
