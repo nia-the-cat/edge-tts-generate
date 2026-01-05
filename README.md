@@ -83,6 +83,7 @@ Choose how to handle existing content in the destination field:
 * **Overwrite** ⚠️ - Replaces all content in the destination field with new audio
   - Use when you want to regenerate audio completely
   - **Confirmation required**: A dialog will ask you to confirm before proceeding
+  - Check "Don't ask again for this session" to skip confirmation for subsequent batch operations
   - Warning: Erases existing content
   
 * **Skip** ⏭️ - Ignores notes that already have content in the destination field

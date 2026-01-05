@@ -9,6 +9,7 @@ from os.path import dirname, join
 from aqt import mw, qt
 from aqt.qt import (
     QButtonGroup,
+    QCheckBox,
     QGroupBox,
     QInputDialog,
     QLabel,
@@ -41,6 +42,16 @@ ENTITY_RE = re.compile(r"(&[^;]+;)")
 BRACKET_READING_RE = re.compile(r" ?\S*?\[(.*?)\]")
 BRACKET_CONTENT_RE = re.compile(r"\[.*?\]")
 WHITESPACE_RE = re.compile(" ")
+
+
+# Session state for confirmation dialogs
+# Resets when Anki restarts - provides convenience for batch operations while maintaining safety
+@dataclass
+class _SessionState:
+    skip_overwrite_confirmation: bool = False
+
+
+_session_state = _SessionState()
 
 
 @dataclass
@@ -460,18 +471,33 @@ class AudioGenDialog(qt.QDialog):
             )
         else:
             # Show confirmation dialog for overwrite mode (destructive action)
-            if self.overwrite_radio.isChecked():
-                reply = QMessageBox.warning(
-                    self,
-                    "Confirm Overwrite",
+            is_overwrite_mode = self.overwrite_radio.isChecked()
+            should_show_confirmation = is_overwrite_mode and not _session_state.skip_overwrite_confirmation
+
+            if should_show_confirmation:
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Icon.Warning)
+                msg_box.setWindowTitle("Confirm Overwrite")
+                msg_box.setText(
                     f"You have selected 'Overwrite' mode. This will replace all existing content in the '{destination_text}' field for {len(self.selected_notes)} note(s).\n\n"
                     "This action cannot be undone.\n\n"
-                    "Do you want to continue?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
+                    "Do you want to continue?"
                 )
+                msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+
+                # Add "Don't ask again" checkbox
+                dont_ask_checkbox = QCheckBox("Don't ask again for this session")
+                msg_box.setCheckBox(dont_ask_checkbox)
+
+                reply = msg_box.exec()
                 if reply != QMessageBox.StandardButton.Yes:
                     return
+
+                # Save session preference if checkbox was checked
+                if dont_ask_checkbox.isChecked():
+                    _session_state.skip_overwrite_confirmation = True
+
             self.accept()
 
     def getAudioHandlingMode(self):
